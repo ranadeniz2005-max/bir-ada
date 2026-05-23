@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>R&B Island - Economy Simulator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div id="vfx-background"></div>
+
+    <!-- Giriş Ekranı -->
+    <div id="login-screen" class="screen active">
+        <!-- Arkaplan Sloganları -->
+        <div class="slogan-bg">
+            <div class="slog slog-1">Herkes Aynı Başlar, Güçlü Olan Kazanır</div>
+            <div class="slog slog-2">Her Kararın Bir Sonucu Var</div>
+            <div class="slog slog-3">Yaşa, Çalış, Yüksel</div>
+        </div>
+        
+        <div class="glass-card" style="position:relative; z-index:10;">
+            <h1>R&B Island</h1>
+            <p>Economy Simulator</p>
+            <form id="login-form">
+                <div class="input-group">
+                    <label>Kullanıcı Adı</label>
+                    <input type="text" id="username" required autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label>Şifre</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="btn-primary">Adaya Ayak Bas</button>
+                <div style="margin-top:15px; text-align:center;">
+                    <a href="#" onclick="document.getElementById('modal-guide').classList.add('active')" style="color:#60a5fa; text-decoration:none; font-size:0.9rem; border-bottom:1px dashed #60a5fa; padding-bottom:2px;">📖 Oyun Rehberi & Kuralları Oku</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- OYUN REHBERİ MODALI -->
+    <div id="modal-guide" class="modal" style="z-index:9999;"><div class="modal-content glass-card wide"><span class="close-btn" onclick="document.getElementById('modal-guide').classList.remove('active')">&times;</span>
+        <h2 style="color:#60a5fa; margin-bottom:10px;">🌴 BİR ADA: BAŞLANGIÇ REHBERİ</h2>
+        <div style="font-size:0.9rem; line-height:1.6; max-height:60vh; overflow-y:auto; padding-right:10px; color:var(--clr-text-main);">
+            <p style="opacity:0.8; font-style:italic;">"Sıfırdan zirveye tırmanırken cüzdanınızı, psikolojinizi ve liyakatinizi korumak zorundasınız."</p>
+            
+            <h3 style="color:var(--clr-primary); margin-top:15px;">1. Hayata Atılış</h3>
+            <p>18 yaşında <b>28.000 🪙</b> ile giriş yaparsınız. Adaya ayak bastığınız tarih <b>doğum gününüz</b> kabul edilir ve her yıl dönümünde Hükümetten yaş bonusu alırsınız. İlk yıl ayda sadece 1.000🪙 ödeyerek Otelde kalırsınız lakin 1 yılın (12. Ay) şafağında otel kiranız <b>8.000🪙'ye fırlar.</b> Ayakta kalmak için acilen çalışmanız elzemdir. Midemize giren her erzak <b>+2 Sağlık</b> kazandırır. Erzaksız kalırsanız sağlık puanınız erir ve lüks hastane masrafları (-8.000 🪙) sizi batırır.</p>
+
+            <h3 style="color:var(--clr-primary); margin-top:15px;">2. Çalışma ve Ceza Kotası</h3>
+            <p>Maaşları hak edebilmek için her ay şahsınıza atanan asgari <b>50 Görev (Kota)</b> mecburidir. Eksik bırakılan her bir görev için <b>Maaştan Anında 500 🪙 Ceza Kesilir!</b> Yaptığınız her görev size <b>-1 Sağlık ve -1 Moral</b> kaybettirecek ve bedeninizi yıpratacaktır.</p>
+
+            <h3 style="color:var(--clr-primary); margin-top:15px;">3. Kariyer ve 17 Yönetici Sınırı</h3>
+            <p>Eğer sistemin kölesi olmak istemiyorsanız Üniversiteye yazılırsınız. <b>Öğrenciyken Market, Eğlence ve Psikiyatri Kliniği (%30) harcamaları Devlet İndirimlidir.</b> Ayrıca enflasyona karşı devlet; Market ve Sağlık alanında yapılan her 10.000 🪙 harcamaya ayda bir kez <b>2.000 🪙 Hibe</b> verir. Mezun olursanız "Üst Düzey Yönetici" olmak için CV atarsınız lakin unutmayın; <b>Adada maksimum sadece ve sadece 17 Müdür Koltuğu Bulunur.</b> Seçim yapıldıktan sonra <b>Her 2 yılda bir tamamı yenilenir</b> ve koltuğunuz düşer!</p>
+
+            <h3 style="color:var(--clr-primary); margin-top:15px;">4. Sosyal Ağ, Eğlence Mekanları ve Arkadaşlar</h3>
+            <p>Şehir Meydanında (Örn: Ada Ofis, Kafe, Fırın) vakit geçirmek sadece cüzdanı yormaz, zihninizi (Moral = 0 olursa: 5.000 Terapi Cezası kesilir) iyileştirir! Gittiğiniz mekanlarda yan masada oturan diğer lobi vatandaşlarına '➕ İstek At'abilir ve listeye düştüklerinde özel (Ada Sosyal) uygulamasıyla yazışabilirsiniz. Yeni mesajlar geldiğinde <b>Mesajlar Kutusu otomatik olarak aktif sohbete odaklanır.</b> İşçisi olduğunuz mekana gittiğinizde adisyonunuz <b>%40 Personel İndirimli</b> yazar! <b>ÖNEMLİ KURAL: Diğer müşterilere arkadaşlık isteği atabilmek için O MASAYA OTURUP HARCAMA YAPMANIZ (Sosyalleşmeniz) ZORUNLUDUR. Bedavaya sosyalleşemezsiniz.</b> Ayrıca Zenginler Kulübü tablosundan rakiplerinizi görebilirsiniz.</p>
+
+            <h3 style="color:var(--clr-danger); margin-top:15px;">5. Dava ve Kırmızı İflas Ekranı</h3>
+            <p>Borcunu gasp eden karakterlere Hukuk davası (Karakol) açabilirsiniz lakin haksız çıkarsanız Adliye Hazineye ağır yüklü ceza ödetir. Borçlardan batıp kredileri şişirerek <b>-100.000 🪙</b> uçurumundan atlarsanız oyun donar. Önünüze açılan Kırmızı Ekrandan ya hapis yatmayı, ya varlıklarınıza el konmasını ya da %75 haczi bedel olarak seçmek zorundasınızdır.</p>
+
+            <h3 style="color:#d946ef; margin-top:15px;">6. ChatGPT Mantığı: Danışman Bot (Yapay Zeka)</h3>
+            <p>Sağ alttaki Danışman Bot standart bir robot değildir! Sizin o anki kilitli bakiyenizi, açlık seviyenizi ve yaşınızı okuyabilen <b>Gelişmiş Bir NLP (Dil İşleme) Yapay Zekasıdır.</b> Bota "Durumum ne, bana analiz yap" dediğinizde harf harf yanıt yazarak (Typing effect) size özel canlı finansal/sağlık tavsiyeleri verir!</p>
+            
+            <h3 style="color:#10b981; margin-top:15px;">7. Sunucu Bağlantısı, Gerçek Zamanlı Bilanço ve Kayıt</h3>
+            <p>Oyunumuz **gerçek zamanlı (multiplayer)** bir sunucuda çalışmaktadır. Ana ekrandaki finans tablosu artık <b>Gerçek Zamanlıdır</b>; harcadığınız veya kazandığınız her kuruş anında "Bu Ayki Gelir / Gider" sayacına işlenir. Oyun ilerlemeniz **her 10 saniyede bir otomatik olarak Bulut Veritabanına** kaydedilir. Oyundan çıkmadan önce içinizin rahat etmesi için "💾 Kaydet" butonunu da kullanabilirsiniz.</p>
+            
+            <button class="btn-primary" style="margin-top:20px; width:100%; font-size:1.1rem; padding:15px;" onclick="document.getElementById('modal-guide').classList.remove('active')">Tamam, Kuralları Anladım</button>
+        </div>
+    </div></div>
+
+    <!-- Ana Şehir Ekranı -->
+    <div id="dashboard" class="screen">
+        <header class="glass-header">
+            <div class="brand-logo" style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:2rem;">🏝️</span>
+                <h1 style="font-size:1.5rem; margin:0; background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;">R&B Island</h1>
+            </div>
+            
+            <div class="time-display" style="display:flex; flex-direction:column; align-items:flex-end;">
+                <div class="date-details">
+                    <span id="full-date-display" style="font-size:1.1rem; letter-spacing:2px; font-family:monospace; color:white;">01.01.0001</span>
+                </div>
+                <div style="color:#fbbf24; font-weight:bold; font-size:0.9rem; margin-top:4px;" id="time-phase">Sabah</div>
+            </div>
+        </header>
+        <div style="background:rgba(255,255,255,0.05); border-bottom:1px solid rgba(255,255,255,0.1); padding:8px 15px; display:flex; align-items:center; gap:15px; font-size:0.9rem;">
+            <div style="font-weight:bold; color:#fbbf24; white-space:nowrap;">📰 Ada Bülteni:</div>
+            <marquee id="global-news-ticker" style="color:white; flex:1;" scrollamount="5">Sayın ada sakinleri, "Dilek/Şikayet Kutusuna" adada olmasını istediğiniz yeni özellikleri veya çalışmayan özellikleri bizlere bildirebilirsiniz.</marquee>
+            <button onclick="publishGlobalNews()" style="background:var(--clr-primary); border:none; color:white; padding:5px 10px; border-radius:5px; cursor:pointer; font-weight:bold; white-space:nowrap;">Yayınla (-50 🪙)</button>
+        </div>
+
+        <div class="dashboard-layout">
+            <!-- KİŞİSEL BİLGİLER WIDGET'I (SOL MENÜ) -->
+            <aside class="sidebar-widget">
+                <div class="sidebar-content">
+                    <div class="sidebar-profile" style="position:relative;">
+                        <button id="btn-notifications" onclick="openHistoryModal()" style="position:absolute; top:-10px; right:-10px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:8px; border-radius:50%; font-size:1.2rem; cursor:pointer; color:white; transition:background 0.3s; display:flex; justify-content:center; align-items:center;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                            🔔
+                            <span id="unread-count" style="position:absolute; top:-5px; right:-5px; background:var(--clr-danger); color:white; font-size:0.75rem; font-weight:bold; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; display:none;">0</span>
+                        </button>
+                        <div class="avatar"><span id="avatar-initial"></span></div>
+                        <h2 id="display-name" style="margin-top:10px; font-size:1.2rem;">Kullanıcı Adı</h2>
+                        <div style="color:var(--clr-text-muted); font-size:0.9rem;">Yaş: <strong id="age-display" style="color:white;">18</strong></div>
+                    </div>
+
+                    <div class="sidebar-wallet glass-card" style="padding:1rem; margin-top:15px; text-align:center;">
+                        <span class="wallet-label" style="display:block; font-size:0.8rem; color:var(--clr-text-muted); margin-bottom:5px;">Güncel Bakiye</span>
+                        <div class="balance-container" style="font-size:1.5rem; font-weight:800; color:#fbbf24;">
+                            <span id="balance-amount">0</span> <span class="currency">🪙</span>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-stats" style="margin-top:15px; font-size:0.85rem; display:flex; flex-direction:column; gap:8px;">
+                        <div class="stat-row" style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:5px;">
+                            <span style="color:var(--clr-text-muted);">Eğitim</span><strong id="edu-status">Lise</strong>
+                        </div>
+                        <div class="stat-row" style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:5px;">
+                            <span style="color:var(--clr-text-muted);">Meslek</span><strong id="job-status">İşsiz</strong>
+                        </div>
+                        <div class="stat-row" style="display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.05); padding-bottom:5px;">
+                            <span style="color:var(--clr-text-muted);">Barınma</span><strong id="housing-status" style="color:var(--clr-success);">Otel (Ucuz)</strong>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-survival" style="margin-top:20px;">
+                        <span style="font-size:0.8rem; color:var(--clr-text-muted); margin-bottom:8px; display:block;">Can & Erzak Durumu</span>
+                        <div class="stat-bar" style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                            <span title="Sağlık">❤️</span>
+                            <div class="progress-bg"><div id="health-bar" class="progress-fill" style="width:100%; background:var(--clr-danger);"></div></div>
+                            <span id="health-value" style="font-size:0.8rem;">100%</span>
+                        </div>
+                        <div class="stat-bar" style="display:flex; align-items:center; gap:8px;">
+                            <span title="Erzak / Yemek">🍔</span>
+                            <div class="progress-bg"><div id="food-bar" class="progress-fill" style="width:100%; background:var(--clr-success);"></div></div>
+                            <span id="food-value" style="font-size:0.8rem;">15 Öğün</span>
+                        </div>
+                        <div class="stat-bar" style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+                            <span title="Moral / Psikoloji">🎭</span>
+                            <div class="progress-bg"><div id="morale-bar" class="progress-fill" style="width:100%; background:var(--clr-warning);"></div></div>
+                            <span id="morale-value" style="font-size:0.8rem;">100%</span>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-apps-title" style="margin-top:25px; font-size:0.8rem; color:var(--clr-text-muted); border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px; margin-bottom:15px;">Bağlantılar</div>
+                    <div class="sidebar-apps" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <button class="app-icon" onclick="openModal('modal-bank')" style="background:linear-gradient(135deg, #3b82f6, #60a5fa); border-radius:15px; padding:15px 5px; color:white; border:none; display:flex; flex-direction:column; align-items:center; transition:transform 0.2s;">
+                            <span style="font-size:1.5rem; margin-bottom:5px;">🏦</span><span style="font-size:0.8rem; font-weight:600;">Mobil Banka</span>
+                        </button>
+                        <button class="app-icon" onclick="openModal('modal-borsa')" style="background:linear-gradient(135deg, #10b981, #34d399); border-radius:15px; padding:15px 5px; color:white; border:none; display:flex; flex-direction:column; align-items:center; transition:transform 0.2s;">
+                            <span style="font-size:1.5rem; margin-bottom:5px;">📈</span><span style="font-size:0.8rem; font-weight:600;">Borsa Cepte</span>
+                        </button>
+                        <button class="app-icon" onclick="openModal('modal-social')" style="background:linear-gradient(135deg, #8b5cf6, #d946ef); border-radius:15px; padding:15px 5px; color:white; border:none; display:flex; flex-direction:column; align-items:center; transition:transform 0.2s;">
+                            <span style="font-size:1.5rem; margin-bottom:5px;">💬</span><span style="font-size:0.8rem; font-weight:600;">Ada Sosyal</span>
+                        </button>
+                        <button class="app-icon" onclick="openModal('modal-admin')" id="btn-admin-panel" style="display:none; background:linear-gradient(135deg, #ef4444, #f87171); border-radius:15px; padding:15px 5px; color:white; border:none; flex-direction:column; align-items:center; transition:transform 0.2s;">
+                            <span style="font-size:1.5rem; margin-bottom:5px;">📊</span><span style="font-size:0.8rem; font-weight:600;">Yönetim Paneli</span>
+                        </button>
+                        <button class="app-icon" onclick="openModal('modal-leaderboard'); window.socket.emit('get_leaderboard');" style="background:linear-gradient(135deg, #f59e0b, #fbbf24); border-radius:15px; padding:15px 5px; color:white; border:none; display:flex; flex-direction:column; align-items:center; transition:transform 0.2s;">
+                            <span style="font-size:1.5rem; margin-bottom:5px;">🏆</span><span style="font-size:0.8rem; font-weight:600;">Zenginler</span>
+                        </button>
+                    </div>
+                    <button onclick="openModal('modal-feedback')" style="margin-top:20px; width:100%; background:rgba(255,255,255,0.05); border:1px dashed rgba(255,255,255,0.2); color:white; padding:12px; border-radius:10px; cursor:pointer; transition:all 0.3s; display:flex; align-items:center; justify-content:center; gap:8px;" onmouseover="this.style.background='rgba(255,255,255,0.1)';" onmouseout="this.style.background='rgba(255,255,255,0.05)';">
+                        <span>📝</span> Dilek / Şikayet Kutusu
+                    </button>
+                </div>
+            </aside>
+
+            <main class="dashboard-content">
+                <h2 class="section-title">Sisteme Bağlı Kurumlar (Devlet)</h2>
+                <div class="actions-grid">
+                    <button class="action-card" onclick="openModal('modal-market')">🛒<br>Market & Yemek</button>
+                    <button class="action-card" onclick="openModal('modal-hospital')">🏥<br>Hastane</button>
+                    <button class="action-card" onclick="openModal('modal-emlak')">🏠<br>Emlakçı</button>
+                    <button class="action-card" onclick="openModal('modal-police')">👮<br>Karakol</button>
+                    <button class="action-card" onclick="openModal('modal-uni')" id="btn-university">🎓<br>Üniversite</button>
+                    <button class="action-card" onclick="openModal('modal-hotel')">🏨<br>Otel</button>
+                </div>
+
+                <h2 class="section-title" style="margin-top:2rem;">Ticaret & Sosyal Hayat</h2>
+                <div class="actions-grid">
+                    <button class="action-card" onclick="openModal('modal-businesses')">🏬<br>İşletmeler & İhaleler</button>
+                    <button class="action-card" onclick="openModal('modal-city')" style="background:rgba(217, 70, 239, 0.1); border-color:#d946ef;">🏙️<br>Şehir Meydanı</button>
+                </div>
+                
+                <h2 class="section-title" style="margin-top:2rem;">Kariyer Merkezî</h2>
+                <div class="actions-grid">
+                    <button class="action-card" onclick="openModal('modal-jobs')" style="width:100%;">🏢 Kariyer</button>
+                    <button class="action-card" onclick="openModal('modal-shift')" style="width:100%; border:1px solid #f59e0b;">🏬 Vardiyam</button>
+                </div>
+
+                <div style="margin-top:2rem; padding:15px; border-radius:10px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center;">
+                    <div style="font-size:0.9rem; color:var(--clr-text-muted);">Oyundan çıkarken güncel verilerinizi manuel olarak buluta (sunucuya) kaydedebilirsiniz.</div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn-primary" onclick="saveGame()">💾 Kaydet</button>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+
+    <!-- ŞEHİR MERKEZİ (MEKANLAR) -->
+    <div id="modal-city" class="modal"><div class="modal-content glass-card wide"><span class="close-btn" onclick="closeModal('modal-city')">&times;</span>
+        <h2>🏙️ Şehir Meydanı (Sosyalleşme)</h2>
+        <p style="font-size:0.8rem; color:var(--clr-text-muted);">Özel sektöre ait mekanlarda sosyalleşin. Patronu veya çalışanı olduğunuz işletmelerde %40 personel indirimi alırsınız.</p>
+        <div id="city-venues-container" style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:15px;">
+            <!-- Dinamik Mekan Kartları Buraya Gelecek -->
+        </div>
+    </div></div>
+
+    <!-- ADA SOSYAL -->
+    <div id="modal-social" class="modal"><div class="modal-content glass-card wide"><span class="close-btn" onclick="closeModal('modal-social')">&times;</span>
+        <h2>💬 Ada Sosyal (Rehber & Mesajlar)</h2>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab(this, 'social-arkadaslar')">Arkadaşlar</button>
+            <button class="tab-btn" onclick="switchTab(this, 'social-mesajlar')">Mesajlar (DM)</button>
+        </div>
+        <div class="tab-content active" id="social-arkadaslar">
+            <p style="font-size:0.8rem; color:var(--clr-text-muted);">Oyundaki diğer vatandaşlara istek atıp listenize ekleyin.</p>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <input type="text" id="friend-username" placeholder="Kullanıcı Adı Ara..." style="flex:1; padding:10px; border-radius:5px; border:none; background:rgba(255,255,255,0.1); color:white;">
+                <button class="btn-primary" onclick="addFriendManual()">İstek At</button>
+            </div>
+            
+            <h4 style="margin-top:15px; font-size:0.9rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">Bekleyen İstekler</h4>
+            <div id="friend-requests-list" style="margin-bottom:10px; max-height:80px; overflow-y:auto; font-size:0.8rem; color:var(--clr-text-muted);">Hiç bekleyen isteğiniz yok.</div>
+            
+            <h4 style="margin-top:10px; font-size:0.9rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">Arkadaşlarım (Sosyallik Skorunuz)</h4>
+            <div id="friends-list" style="margin-top:10px; font-size:0.9rem; color:var(--clr-text-muted); max-height:150px; overflow-y:auto;">
+                Hiç arkadaşınız yok. Şehir meydanına inip yeni insanlarla tanışmaya başlayın!
+            </div>
+        </div>
+        <div class="tab-content" id="social-mesajlar">
+            <p style="font-size:0.8rem; color:var(--clr-text-muted);">Sadece arkadaş listenizde olan kişilere Direkt Mesaj (DM) atabilirsiniz.</p>
+            
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <select id="dm-target" style="flex:1; padding:10px; border-radius:5px; background:rgba(255,255,255,0.1); color:white; border:none; outline:none;" onchange="renderDMHistory()">
+                    <option value="" style="color:black;">-- Konuşulacak Arkadaşı Seç --</option>
+                </select>
+            </div>
+            
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <input type="text" id="dm-message" placeholder="Mesajınız..." autocomplete="off" style="flex:1; padding:10px; border-radius:5px; border:none; background:rgba(0,0,0,0.3); color:white; outline:none;">
+                <button class="btn-primary" onclick="sendDirectMessage()">Gönder</button>
+            </div>
+
+            <div id="social-dm-list" style="margin-top:15px; background:rgba(0,0,0,0.3); border-radius:10px; padding:10px; height:150px; display:flex; flex-direction:column; gap:8px; overflow-y:auto; color:var(--clr-text-muted);">
+                Sembolik mesajlaşma penceresi... Lütfen üstten arkadaş seçin.
+            </div>
+        </div>
+    </div></div>
+
+    <!-- BİLDİRİM GEÇMİŞİ -->
+    <div id="modal-history" class="modal"><div class="modal-content glass-card"><span class="close-btn" onclick="closeModal('modal-history')">&times;</span>
+        <h2>🔔 Son Bildirimler</h2>
+        <p style="font-size:0.8rem; color:var(--clr-text-muted);">Oyundaki son 30 bildiriminizin (Hükümet duyuruları, bonuslar, sağlık uyarıları) kronolojik kaydı.</p>
+        <div id="notification-history-list" style="margin-top:15px; display:flex; flex-direction:column; gap:10px; max-height:400px; overflow-y:auto; padding-right:5px;">
+            <div style="padding:10px; background:rgba(0,0,0,0.5); border-radius:8px;">Henüz bildirim bulunmamaktadır...</div>
+        </div>
+    </div></div>
+
+    <!-- MARKET -->
+    <div id="modal-market" class="modal"><div class="modal-content glass-card"><span class="close-btn" onclick="closeModal('modal-market')">&times;</span>
+        <h2>🛒 Market & Ev Yemekleri</h2>
+        <p>Günde 3 öğün yemezseniz sağlığınız çöker. Toplu erzak alırsanız sistem vakti gelince otomatik yer.</p>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top:15px;">
+            <button class="btn-primary" id="btn-buy-food-15">15 Öğünlük Erzak Paketi (-2.500 🪙)</button>
+            <button class="btn-primary" id="btn-buy-food-30">30 Öğünlük (10 Günlük) Aile Paketi (-5.000 🪙)</button>
+            <hr style="opacity:0.2;">
+            <button class="btn-secondary" id="btn-fast-heal">Restoranda Lüks Şef Yemeği Ye (-2.500 🪙) <small>[+25% Can + 1 Öğün]</small></button>
+        </div>
+    </div></div>
+
+    <!-- BANKA -->
+    <div id="modal-bank" class="modal"><div class="modal-content glass-card wide"><span class="close-btn" onclick="closeModal('modal-bank')">&times;</span>
+        <h2>🏦 Banka ve Finans Merkezî</h2>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab(this, 'bank-ozet')">Hesap Özeti</button>
+            <button class="tab-btn" onclick="switchTab(this, 'bank-kredi')">Kredi</button>
+            <button class="tab-btn" onclick="switchTab(this, 'bank-mevduat')">Mevduat</button>
+            <button class="tab-btn" onclick="switchTab(this, 'bank-transfer')">Para Transferi</button>
+        </div>
+        <div class="tab-content active" id="bank-ozet">
+            <h3 id="financial-flow">Gider: 0 | Gelir: 0</h3>
+            <div style="background:rgba(0,0,0,0.3); border-radius:10px; padding:10px; margin-top:10px;">
+                <canvas id="personalFinanceChart" style="width:100%; max-height:220px;"></canvas>
+            </div>
+            <h4 style="margin-top:15px; font-size:0.9rem; color:var(--clr-text-muted);">Son İşlemler</h4>
+            <div class="transaction-list" id="transaction-list" style="margin-top:5px; max-height:100px;"></div>
+        </div>
+        <div class="tab-content" id="bank-kredi">
+            <h3>Toplam Kredi Borcunuz: <span id="current-debt">0</span> 🪙</h3>
+            <p style="font-size:0.8rem; color:var(--clr-text-muted);">Toplam %3.5 faiz anaparaya eklenir ve taksitlere bölünür. (En az asgari ücretli veya patron olunmalıdır, öğrenci çekemez).</p>
+            <div class="form-group" style="margin-top:10px;">
+                <input type="number" id="loan-amount" placeholder="Miktar" style="flex:1;">
+                <select id="loan-term" style="padding:10px; border-radius:5px; background:rgba(255,255,255,0.1); color:white; border:none; outline:none;">
+                    <option value="1" style="color:black;">1 Ay Taksit</option>
+                    <option value="3" style="color:black;">3 Ay Taksit</option>
+                    <option value="6" style="color:black;">6 Ay Taksit</option>
+                    <option value="12" style="color:black;">12 Ay Taksit</option>
+                </select>
+                <button class="btn-primary" id="btn-take-loan">Kredi Çek</button>
+            </div>
+            <div id="active-loans-list" style="margin-top:15px; font-size:0.9rem; max-height:120px; overflow-y:auto; color:var(--clr-danger);">Krediniz Bulunmamaktadır.</div>
+        </div>
+        <div class="tab-content" id="bank-mevduat">
+            <h3>Kilitli Toplam Mevduat: <span id="current-deposit">0</span> 🪙</h3>
+            <p style="font-size:0.8rem; color:var(--clr-text-muted);">Paranız kilitlenir. Yıllık %40 faiz oranı üzerinden seçilen Vadeye göre kâr yansıtılır.</p>
+            <div class="form-group" style="margin-top:10px;">
+                <input type="number" id="deposit-amount" placeholder="Miktar" style="flex:1;">
+                <select id="deposit-term" style="padding:10px; border-radius:5px; background:rgba(255,255,255,0.1); color:white; border:none; outline:none;">
+                    <option value="1" style="color:black;">1 Ay Vade</option>
+                    <option value="3" style="color:black;">3 Ay Vade</option>
+                    <option value="6" style="color:black;">6 Ay Vade</option>
+                    <option value="12" style="color:black;">12 Ay Vade</option>
+                </select>
+                <button class="btn-primary" id="btn-put-deposit">Vadeye Kitle</button>
+            </div>
+            <div id="active-deposits-list" style="margin-top:15px; font-size:0.9rem; max-height:120px; overflow-y:auto; color:var(--clr-success);">Mevduatınız Bulunmamaktadır.</div>
+        </div>
+        <div class="tab-content" id="bank-transfer">
+            <p style="font-size:0.8rem; color:var(--clr-text-muted);">Diğer oyunculara P2P Transfer ve Borç gönderimi. İban veya Kullanıcı Adı yazarak gönderin.</p>
+            <div class="form-group" style="margin-top:15px;">
+                <input type="text" id="loan-receiver" placeholder="Alıcı Kullanıcı Adı" style="margin-bottom:10px; width:100%;">
+                <div style="display:flex; gap:10px;">
+                    <input type="number" id="p2p-loan-amount" placeholder="Miktar" style="flex:1;">
+                    <select id="p2p-loan-term" style="padding:10px; border-radius:5px; background:rgba(255,255,255,0.1); color:white; border:none; outline:none;">
+                        <option value="0" style="color:black;">Vadesiz (Karşılıksız Hediye)</option>
+                        <option value="1" style="color:black;">1 Ay Vade (Borç)</option>
+                        <option value="3" style="color:black;">3 Ay Vade (Borç)</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn-primary" id="btn-lend-money" style="width:100%; margin-top:10px;">Transfer Emir Gönder</button>
+            
+            <div id="active-debts" style="margin-top:15px; font-size:0.9rem; background:rgba(0,0,0,0.3); padding:10px; border-radius:10px;">Gönderilmiş aktif borcunuz yok.</div>
+        </div>
+    </div></div>
+
+    <!-- HASTANE -->
+    <div id="modal-hospital" class="modal"><div class="modal-content glass-card"><span class="close-btn" onclick="closeModal('modal-hospital')">&times;</span>
+        <h2>🏥 Hastane (Check-Up'a Kalan: <span id="checkup-counter">3</span> Ay)</h2>
+        <button class="btn-primary" id="btn-checkup">Check-up Yaptır (-2.000 🪙)</button>
+        <hr style="opacity:0.2; margin:15px 0;">
+        <p style="font-size:0.8rem; color:var(--clr-text-muted);">Eğer açlıktan Can (Health) seviyen %0 olursa ACİL Servise kaldırılırsın ve fahiş ceza/masraf kesilir.</p>
+        <button class="btn-secondary" id="btn-heal-hospital" style="width:100%; margin-top:10px;">Serumu Bağla (Canı %100 Yap) (-2.000 🪙)</button>
+        <hr style="opacity:0.2; margin:15px 0;">
+        <h3 style="color:#d946ef; margin-bottom:5px; font-size:1.1rem;">🧠 Psikiyatri Kliniği (Terapi)</h3>
+        <p style="font-size:0.8rem; color:var(--clr-text-muted);">Borçlardan veya aşırı mesailerden bozulan psikolojinizi onarın.</p>
+        <button class="btn-secondary" id="btn-therapy" style="width:100%; margin-top:5px; background:rgba(217, 70, 239, 0.2); border-color:#d946ef;">Klinik Terapi Al (Morali %100 Yap) (-3.000 🪙 / Öğrenciye -2.100 🪙)</button>
+    </div></div>
+
+    <!-- POLİS VE MAHKEME -->
+    <div id="modal-police" class="modal"><div class="modal-content glass-card wide"><span class="close-btn" onclick="closeModal('modal-police')">&times;</span>
+        <h2>👮 Karakol & Mahkeme</h2>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab(this, 'police-sikayet')">Şikayet & Dava Merkezi</button>
+        </div>
+        <div class="tab-content active" id="police-sikayet">
+            <p style="font-size:0.8rem; color:var(--clr-text-muted);">Oyuncular arası anlaşmazlıkları (borç ödememe vb.) yargıya taşıyın. Dava açma harcı: 3.000 🪙</p>
+            <div class="form-group" style="margin-top:15px;">
+                <input type="text" id="lawsuit-target" placeholder="Davalı Kullanıcı Adı" style="margin-bottom:10px; width:100%; padding:10px; border-radius:5px; background:rgba(255,255,255,0.1); color:white; border:none; outline:none;">
+                <input type="text" id="lawsuit-reason" placeholder="Dava Sebebi (Örn: Borç İhlali, Hakaret)" style="width:100%; padding:10px; border-radius:5px; background:rgba(255,255,255,0.1); color:white; border:none; outline:none;">
+            </div>
+            <button class="btn-danger" id="btn-file-lawsuit" style="width:100%; margin-top:10px;" onclick="fileLawsuit()">Dava Aç (-3.000 🪙)</button>
+        </div>
+    </div></div>
+
+    <!-- EMLAKÇI & OTEL -->
+    <div id="modal-hotel" class="modal"><div class="modal-content glass-card"><span class="close-btn" onclick="closeModal('modal-hotel')">&times;</span>
+        <h2>🏨 Sisteme Bağlı Otel</h2>
+        <p>Aylık kiranız her ay kesilir. İlk yıl otel çok ucuzdur, sonra fiyatı katlanarak artar.</p>
+        <p>Güncel Otel Kiralama Bedeli: <strong id="hotel-price">1.000 🪙 / Ay</strong></p>
+    </div></div>
+
+    <div id="modal-emlak" class="modal"><div class="modal-content glass-card"><span class="close-btn" onclick="closeModal('modal-emlak')">&times;</span>
+        <h2>🏠 Emlakçı</h2>
+        <p>Otelin zamlarından kurtulmak veya prestij için ev kiralayın/satın alın.</p>
+        <button class="btn-secondary" id="btn-rent-house" style="width:100%; margin-bottom:10px;">Orta Sınıf Ev Kirala (-7.500 🪙 / Ay)</button>
+        <button class="btn-primary" id="btn-buy-house" style="width:100%;">Ev Satın Al (-1.500.000 🪙)</button>
+        <button class="btn-danger" id="btn-return-hotel" style="width:100%; margin-top:10px; display:none;" onclick="returnToHotel()">Evi Boşalt ve Otele Dön</button>
+    </div></div>
+
+    <!-- ÜNİVERSİTE -->
+    <div id="modal-uni" class="modal"><div class="modal-content glass-card"><span class="close-btn" onclick="closeModal('modal-uni')">&times;</span>
+        <h2>🎓 Üniversite Merkezi</h2>
+        <div id="uni-content">
+            <p>Devlet işinden atılmamak için 30. aya kadar (2.5 Yıl) Diploma almalısın. Okul ücretsizdir, ancak 1 Sınıf 12 ay sürer. Mezuniyet diplomasını teslim almak 50.000 🪙 tutar.</p>
+            <button class="btn-secondary" id="btn-study-uni">Ücretsiz Kaydol (Aylık Part-Time Çalışırken Burs Alırsın)</button>
+            <button class="btn-primary" id="btn-buy-diploma" style="margin-top:10px; display:none;">Diplomayı Teslim Al (-50.000 🪙)</button>
+            
+            <h3 style="margin-top:20px; font-size:1.1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">📚 Şu An Üniversite Okuyanlar</h3>
+            <div id="uni-students-list" style="margin-top:10px; font-size:0.9rem; color:var(--clr-text-muted); max-height:150px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;">
+                Yükleniyor...
+            </div>
+        </div>
+    </div></div>
+
+    <!-- İŞLETMELER VE İHALELER -->
+    <div id="modal-businesses" class="modal"><div class="modal-content glass-card"><span class="close-btn" onclick="closeModal('modal-businesses')">&times;</span>
+        <h2>🏬 Açık Arttırma & Şirket Kurulumu</h2>
+        <p>6. ve 12. Aydan itibaren yepyeni sektörler ve bu sektörlere bağlı "Tedarik & Üretim Zincirleri" ihaleye çıkar.</p>
+        <p style="font-size:0.8rem; color:var(--clr-text-muted);">Ana Perakende dükkanları her ay zorunlu işçi asgari ücreti öder. Tedarik tesisi alırsanız hammadde çok ucuza gelir!</p>
+        <div id="auction-list" style="margin-top:15px; display:flex; flex-direction:column; gap:10px;">
+            <div style="padding:10px; background:rgba(0,0,0,0.5); border-radius:8px;">İhaleler Henüz Açılmadı...</div>
+        </div>
+        <h2 style="margin-top:25px;">👥 İnsan Kaynakları (NPS)</h2>
+        <p style="font-size:0.8rem; color:var(--clr-text-muted);">İşletmelerinizin çalışan durumları. Çalışanı istifa eden işletme kâr getirmez!</p>
+        <div id="hr-panel" style="margin-top:10px; display:flex; flex-direction:column; gap:10px;">
+            <i style="color:var(--clr-text-muted);">Henüz perakende işletmeniz bulunmuyor.</i>
+        </div>
+    </div></div>
+
+    <!-- İŞÇİ ZAM TALEBİ MODAL -->
+    <div id="modal-hr-demand" class="modal" style="background:rgba(0,0,0,0.8); z-index:9999;"><div class="modal-content glass-card wide" style="border: 2px solid #f59e0b; position:relative;">
+        <h2 style="color:#f59e0b;">🗣️ İŞÇİNİZ ZAM İSTİYOR!</h2>
+        <p style="font-size:1rem;" id="hr-demand-text">Patron, ev kiraları artıyor! Geçinemiyorum, maaşıma <strong>+4.000 🪙</strong> zam istiyorum.</p>
+        <p style="font-size:0.8rem; color:var(--clr-text-muted);">Zammı reddederseniz %60 olasılıkla istifa edecek ve yeni işçi alana (-10.000 🪙) kadar işletmeniz üretim yapmayacaktır.</p>
+        
+        <div style="display:flex; gap:15px; margin-top:20px;">
+            <button class="btn-primary" style="flex:1; padding:15px; background:var(--clr-success);" id="btn-hr-accept">
+                <strong style="font-size:1.1rem;">Kabul Et (Zam Yap)</strong>
+            </button>
+            <button class="btn-danger" style="flex:1; padding:15px;" id="btn-hr-reject">
+                <strong style="font-size:1.1rem;">Reddet (Rest Çek)</strong>
+            </button>
+        </div>
+    </div></div>
+
+    <!-- BORSA -->
+    <div id="modal-borsa" class="modal"><div class="modal-content glass-card wide"><span class="close-btn" onclick="closeModal('modal-borsa')">&times;</span>
+        <h2>📈 Borsa Endeksi & Piyasalar</h2>
+        <p style="font-size:0.8rem; color:var(--clr-text-muted);">Oyundaki tüm işletme hisselerinin aylık Kâr (Milyar 🪙) performansı. Bu verileri izleyip yatırımlarınızı 6. ve 12. ay ihalelerinde yapabilirsiniz.</p>
+        <div style="background:rgba(0,0,0,0.3); border-radius:10px; padding:10px; margin-top:10px;">
+            <canvas id="marketChart" style="width:100%; max-height:250px;"></canvas>
+        </div>
+    </div></div>
+
+    <!-- İFLAS VE CEZA SEÇİMİ -->
+    <div id="modal-bankruptcy" class="modal" style="background:rgba(220,38,38,0.3); z-index:9999;"><div class="modal-content glass-card wide" style="border: 2px solid var(--clr-danger); position:relative;">
+        <h2 style="color:var(--clr-danger);">🚨 KRİTİK İFLAS (Maksimum Borç Limiti)</h2>
+        <p style="font-size:0.9rem;">Bakiyeniz <strong>-100.000 🪙</strong> sınırını aştı! Sistem hesabınıza, mal varlıklarınıza ve sivil haklarınıza el koyuyor. Lütfen devletin sunacağı ceza senaryolarından birini Yargıtay öncesi SEÇİN:</p>
+        
+        <div style="display:flex; flex-direction:column; gap:15px; margin-top:20px;">
+            <button class="btn-danger" style="text-align:left; padding:15px;" onclick="executeBankruptcy('hapis')">
+                <strong style="font-size:1.1rem;">A) İflas İlan Et (Sıfırdan Başla)</strong><br>
+                <small>Tüm eviniz, işletmeniz, mesleğiniz ve DİPLOMANIZ dahil her şey elinizden alınır. Bakiyeniz 0 🪙 olarak hayata en alt kademeden baştan dönersiniz.</small>
+            </button>
+            <button class="btn-secondary" style="text-align:left; padding:15px;" onclick="executeBankruptcy('haciz')">
+                <strong style="font-size:1.1rem;">B) Varlık Haczi (Ev/İşyeri Satışı)</strong><br>
+                <small>Eviniz veya işletmeniz varsa devlet satar ve borçtan düşer. Borç kalırsa asgari ücretle yaşamaya devam edersiniz.</small>
+            </button>
+            <button class="btn-primary" style="text-align:left; padding:15px;" onclick="executeBankruptcy('maas')">
+                <strong style="font-size:1.1rem;">C) %75 Kazançlara Süresiz Haciz (Ağır Kesinti)</strong><br>
+                <small>Hiçbir şeyiniz satılmaz ama Bakiyeniz 0'ın üstüne (Artıya) çıkana dek TÜM maaş ve gelirlerinizin %75'i otomatik olarak her ay Devlete kesilir.</small>
+            </button>
+        </div>
+    </div></div>
+
+    <!-- İŞ BULMA -->
+    <div id="modal-jobs" class="modal"><div class="modal-content glass-card"><span class="close-btn" onclick="closeModal('modal-jobs')">&times;</span>
+        <h2>🏢 Kariyer Merkezî</h2>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab(this, 'jobs-secim')">Meslek Seçimi</button>
+            <button class="tab-btn" onclick="switchTab(this, 'jobs-history')">Kariyer & Hayat Hikayem</button>
+        </div>
+        <div class="tab-content active" id="jobs-secim">
+                <p style="font-size:0.8rem; opacity:0.8; margin-bottom:5px;">Sisteme Bağlı Asgari İşçi (28.000 🪙) - İlk 12 Ay</p>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px;">
+                    <button class="btn-primary" id="job-asgari-cafe" style="font-size:0.85rem;">Ada Kafe İşletmesi</button>
+                    <button class="btn-primary" id="job-asgari-restoran" style="font-size:0.85rem;">Ada Restoran Lokantası</button>
+                    <button class="btn-primary" id="job-asgari-firin" style="font-size:0.85rem;">Ada Fırın İşletmesi</button>
+                    <button class="btn-primary" id="job-asgari-butik" style="font-size:0.85rem;">Ada Butik Mağazası</button>
+                </div>
+                <hr style="opacity:0.2; margin:10px 0;">
+                <button class="btn-secondary" id="job-part">Part-Time Öğrenci (14.000 🪙 + 4.000 Burs)</button>
+                <button class="btn-primary" id="job-high">Üst Düzey Yönetici (60.000 🪙 - Min. 3. Yıl, Diploma ve 1 Yıl Tecrübe)</button>
+                <hr style="opacity:0.2;">
+                <button class="btn-danger" id="job-resign" style="display:none;">İşten Ayrıl</button>
+            </div>
+        </div>
+        <div class="tab-content" id="jobs-history">
+            <p style="font-size:0.8rem; color:var(--clr-text-muted);">Oyundaki işe girişleriniz, ayrılıklarınız ve aldığınız unvanlar loglanır.</p>
+            <div id="career-history-list" style="margin-top:15px; font-size:0.9rem; background:rgba(0,0,0,0.3); padding:10px; border-radius:10px; max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;">
+                <i style="color:var(--clr-text-muted);">Henüz bir özgeçmiş kaydı bulunmuyor.</i>
+            </div>
+        </div>
+    </div></div>
+
+    <!-- YÖNETİM (ADMIN) PANELİ -->
+    <div id="modal-admin" class="modal"><div class="modal-content glass-card wide"><span class="close-btn" onclick="closeModal('modal-admin')">&times;</span>
+        <h2>📊 Şehir Yönetim Paneli (Admin)</h2>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab(this, 'admin-oyuncular')">Aktif Oyuncular</button>
+            <button class="tab-btn" onclick="switchTab(this, 'admin-cv')">İş Başvuruları (CV)</button>
+            <button class="tab-btn" onclick="switchTab(this, 'admin-feedbacks'); window.socket.emit('get_feedbacks');">Dilek / Şikayetler</button>
+        </div>
+        <div class="tab-content active" id="admin-oyuncular">
+            <p style="font-size:0.8rem; color:var(--clr-text-muted);">Sistemde bulunan tüm oyuncular ve şirket durumları.</p>
+            <table style="width:100%; text-align:left; border-collapse:collapse; margin-top:10px; font-size:0.85rem;">
+                <thead>
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.2); color:var(--clr-text-muted);">
+                        <th style="padding:10px;">Oyuncu</th>
+                        <th style="padding:10px;">Yaş</th>
+                        <th style="padding:10px;">Bakiye</th>
+                        <th style="padding:10px;">İş / Unvan</th>
+                        <th style="padding:10px;">Konaklama</th>
+                        <th style="padding:10px;">Eğitim</th>
+                        <th style="padding:10px;">Mesleki Yetenek</th>
+                        <th style="padding:10px;">Sosyal Skor</th>
+                        <th style="padding:10px;">Durum</th>
+                        <th style="padding:10px;">İşlem</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-players-body">
+                </tbody>
+            </table>
+        </div>
+        <div class="tab-content" id="admin-cv">
+            <p style="font-size:0.8rem; color:var(--clr-text-muted);">Oyuncu ve Botlardan gelen Üst Düzey Yönetici (Müdürlük) iş başvuruları onaya düşer.</p>
+            <div id="admin-cv-list" style="margin-top:15px; display:flex; flex-direction:column; gap:10px;">
+                <!-- CV içerikleri buraya basılacak -->
+            </div>
+        </div>
+        <div class="tab-content" id="admin-feedbacks">
+            <p style="font-size:0.8rem; color:var(--clr-text-muted);">Oyuncular tarafından gönderilen dilek, şikayet ve hata bildirimleri.</p>
+            <div id="admin-feedbacks-list" style="margin-top:15px; display:flex; flex-direction:column; gap:10px; max-height:400px; overflow-y:auto; padding-right:5px;">
+                <i style="color:var(--clr-text-muted);">Henüz hiç geri bildirim yok.</i>
+            </div>
+        </div>
+    </div></div>
+
+    <!-- MESAİ / VARDİYA -->
+    <div id="modal-shift" class="modal"><div class="modal-content glass-card wide"><span class="close-btn" onclick="closeModal('modal-shift')">&times;</span>
+        <h2>🏬 Vardiyam (Mesai)</h2>
+        <p style="font-size:0.8rem; color:var(--clr-text-muted);">Sistem maaşınızı hak etmeniz için siparişleri yönetin. İlk 12 Ay boyunca Yetenek Puanınızı artırıp kalifiye olun.</p>
+        <div style="background:rgba(0,0,0,0.3); padding:10px; border-radius:10px; margin-top:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong>Mesleki Yetenek Puanı: <span id="job-skill-display" style="color:var(--clr-success);">0</span></strong>
+                <strong style="font-size:0.9rem;">Aylık Görev Kotası: <span id="monthly-quota-display" style="color:#f59e0b;">0</span> / 50</strong>
+            </div>
+            <hr style="opacity:0.2; margin:10px 0;">
+            <div id="shift-orders-list" style="display:flex; flex-direction:column; gap:10px;">
+                <i style="color:var(--clr-text-muted);">Şu an aktif sipariş veya kriz yok. Vardiyanızı bekleyin...</i>
+            </div>
+        </div>
+    </div></div> <!-- modal-shift and modal-content properly closed -->
+
+    <!-- Yevmiye Mini Oyun Alanı Overlay (Full Screen) -->
+    <div id="minigame-area" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.95); z-index:9999; flex-direction:column; justify-content:center; align-items:center; backdrop-filter:blur(5px);">
+        <h2 id="mg-title" style="color:white; margin-bottom:15px; font-size:2rem; text-shadow:0 0 10px rgba(255,255,255,0.5);">Görev Yapılıyor...</h2>
+        
+        <div id="mg-dynamic-container" style="width:90%; max-width:600px; padding:20px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:15px; flex-direction:column; align-items:center; display:flex;">
+            <!-- Dinamik Oyun İçeriği Buraya Gelecek -->
+        </div>
+        
+        <button class="btn-danger" style="margin-top:30px; font-size:1.2rem; padding:10px 30px;" onclick="cancelMinigame()">Vazgeç (Kapat)</button>
+    </div>
+
+    <!-- Dilek ve Şikayet Modali -->
+    <div id="modal-feedback" class="modal"><div class="modal-content glass-card"><span class="close-btn" onclick="closeModal('modal-feedback')">&times;</span>
+        <h2>📝 Dilek ve Şikayet Kutusu</h2>
+        <p style="font-size:0.85rem; color:var(--clr-text-muted); margin-bottom:15px;">Oyunda yaşadığınız teknik sorunları, çalışmayan özellikleri veya adada olmasını istediğiniz yeni fikirleri Şehir Yönetimine iletin.</p>
+        <textarea id="feedback-text" rows="5" style="width:100%; padding:10px; border-radius:10px; background:rgba(0,0,0,0.3); color:white; border:1px solid rgba(255,255,255,0.2); font-family:inherit; margin-bottom:15px;" placeholder="Mesajınızı buraya yazın..."></textarea>
+        <button class="btn-primary" style="width:100%;" onclick="submitFeedback()">Yönetime Gönder</button>
+    </div></div>
+
+    <!-- Liderlik Tablosu Modali -->
+    <div id="modal-leaderboard" class="modal"><div class="modal-content glass-card"><span class="close-btn" onclick="closeModal('modal-leaderboard')">&times;</span>
+        <h2>🏆 Adanın En Zenginleri</h2>
+        <p style="font-size:0.85rem; color:var(--clr-text-muted); margin-bottom:15px;">Ada çapında nakit bakiyesi en yüksek olan ilk 20 oyuncunun sıralaması. Zirvede kim var?</p>
+        <div id="leaderboard-list" style="display:flex; flex-direction:column; gap:8px; max-height:400px; overflow-y:auto; padding-right:5px;">
+            <i style="color:var(--clr-text-muted);">Sıralama yükleniyor...</i>
+        </div>
+    </div></div>
+
+    <div id="notifications-area"></div>
+
+    <!-- Chatbot Widget -->
+    <div id="chat-widget" class="chat-widget">
+        <div class="chat-header" id="chat-header"><span>Danışman Bot</span><span class="chat-toggle">−</span></div>
+        <div class="chat-body" id="chat-body">
+            <div class="chat-message bot">Şehir simülasyonuna hoş geldin! Açlık stoku, otel kirası veya mahkeme sistemi hakkında bir şey sorabilirsin.</div>
+        </div>
+        <div class="chat-input-area"><input type="text" id="chat-input" placeholder="Yaz..."><button id="btn-chat-send">📨</button></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
