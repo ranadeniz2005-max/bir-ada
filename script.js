@@ -386,6 +386,34 @@ document.addEventListener('DOMContentLoaded', () => {
             saveGame(true);
         });
 
+        window.socket.on('admin_balance_gift', (data) => {
+            let amount = data.amount;
+            if (amount > 0) {
+                updateBalance(amount, "Şehir Yönetimi Para Yardımı", true);
+                notify(`[Yönetim] Şehir Yönetimi hesabınıza ${amount} 🪙 yatırdı!`, "success");
+            } else {
+                updateBalance(Math.abs(amount), "Şehir Yönetimi Bakiye Kesintisi", false);
+                notify(`[Yönetim] Şehir Yönetimi hesabınızdan ${Math.abs(amount)} 🪙 kesinti yaptı!`, "error");
+            }
+            updateUI();
+            saveGame(true);
+        });
+
+        window.socket.on('admin_edit_balance_response', (data) => {
+            if (data.success) {
+                notify(data.msg, "success");
+                if (data.target === gameState.username) {
+                    gameState.balance = data.newBalance;
+                    updateUI();
+                }
+                setTimeout(() => {
+                    if (window.socket) window.socket.emit('get_admin_player_data');
+                }, 500);
+            } else {
+                notify(data.msg, "error");
+            }
+        });
+
         window.socket.on('notification_sync', (data) => {
             gameState.notificationHistory = data.history || [];
             gameState.unreadNotifications = data.unread || 0;
@@ -448,7 +476,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td style="padding:10px;">${p.socialScore} Arkadaş</td>
                         <td style="padding:10px; color:${p.isOnline ? 'var(--clr-success)' : 'var(--clr-danger)'};">${p.isOnline ? '🟢 Online' : '🔴 Offline'}</td>
                         <td style="padding:10px;">
-                            ${p.name !== gameState.username && !window.systemBotNames.includes(p.name) ? `<button class="btn-danger" style="padding:3px 8px; font-size:0.75rem; border-radius:5px;" onclick="adminDeletePlayer('${p.name}')">🗑️ Sil</button>` : '-'}
+                            <button class="btn-primary" style="padding:3px 8px; font-size:0.75rem; border-radius:5px; background:var(--clr-success); margin-right:5px;" onclick="adminSendMoney('${p.name}')">💸 Para Gönder</button>
+                            ${p.name !== gameState.username && !window.systemBotNames.includes(p.name) ? `<button class="btn-danger" style="padding:3px 8px; font-size:0.75rem; border-radius:5px;" onclick="adminDeletePlayer('${p.name}')">🗑️ Sil</button>` : ''}
                         </td>
                     </tr>
                 `;

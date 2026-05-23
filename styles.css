@@ -560,3 +560,22 @@ input:focus {
     0%, 80%, 100% { transform: scale(0); }
     40% { transform: scale(1); }
 }
+
+/* Custom scrollbar for horizontal news ticker */
+#global-news-ticker {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+#global-news-ticker::-webkit-scrollbar {
+    height: 4px;
+}
+#global-news-ticker::-webkit-scrollbar-track {
+    background: transparent;
+}
+#global-news-ticker::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+}
+#global-news-ticker::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
