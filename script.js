@@ -58,6 +58,9 @@ const gameState = {
     systemSpendTrack: 0, 
     
     transactions: [],
+    debtsGiven: [],
+    debtsTaken: [],
+    lawsuits: [],
     notificationHistory: [],
     unreadNotifications: 0,
     bankBlocked: false,
@@ -67,7 +70,9 @@ const gameState = {
     financeHistory: { labels: [], income: [], expense: [] },
     marketHistory: { labels: [], cafe: [], butik: [], pastane: [], restoran: [] },
     currentMonthIncome: 0,
-    currentMonthExpense: 0
+    currentMonthExpense: 0,
+    totalIncome: 0,
+    totalExpense: 0
 };
 
 // 1 Ay = 24 Gerçek Saat. Demek ki 30 Oyun Günü = 24 Saat.
@@ -338,6 +343,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateBalance(-data.penalty, "Asılsız Dava Cezası", false);
                 }
                 if (data.debtsGiven !== undefined) gameState.debtsGiven = data.debtsGiven;
+                if (data.lawsuits !== undefined) gameState.lawsuits = data.lawsuits;
+                if (typeof renderLawsuitsHistory === 'function') renderLawsuitsHistory();
                 updateUI();
                 saveGame(true);
             } else {
@@ -348,6 +355,61 @@ document.addEventListener('DOMContentLoaded', () => {
         window.socket.on('lawsuit_lost', (data) => {
             notify(data.msg, 'error');
             if (data.penalty) updateBalance(-data.penalty, "Dava Kaybı İcra Cezası", false);
+            if (data.debtsTaken !== undefined) gameState.debtsTaken = data.debtsTaken;
+            if (data.lawsuits !== undefined) gameState.lawsuits = data.lawsuits;
+            if (typeof renderLawsuitsHistory === 'function') renderLawsuitsHistory();
+            if (typeof renderLawsuit === 'function') renderLawsuit();
+            updateUI();
+            saveGame(true);
+        });
+
+        window.socket.on('lawsuit_sync', (data) => {
+            if (data.lawsuits !== undefined) gameState.lawsuits = data.lawsuits;
+            if (typeof renderLawsuitsHistory === 'function') renderLawsuitsHistory();
+        });
+
+        window.socket.on('burs_deposit_response', (data) => {
+            if (data.success) {
+                notify(data.msg, 'success');
+                if (data.amount) updateBalance(-data.amount, "Üniversite Burs Bağışı", false);
+                updateUI();
+                saveGame(true);
+            } else {
+                notify(data.msg, 'error');
+            }
+        });
+
+        window.socket.on('burs_received_live', (data) => {
+            if (data.share) updateBalance(data.share, `Burs (${data.sender} Fonu)`, true);
+            notify(`[Üniversite] ${data.sender} adlı oyuncu üniversite fonuna burs yatırdı! Payınıza ${data.share} 🪙 yansıdı!`, 'success');
+            updateUI();
+            saveGame(true);
+        });
+
+        window.socket.on('notification_sync', (data) => {
+            gameState.notificationHistory = data.history || [];
+            gameState.unreadNotifications = data.unread || 0;
+            updateUI();
+        });
+
+        window.socket.on('pay_back_debt_response', (data) => {
+            if (data.success) {
+                notify(data.msg, 'success');
+                if (data.debtsTaken !== undefined) gameState.debtsTaken = data.debtsTaken;
+                if (data.amount) updateBalance(-data.amount, "Borç Geri Ödemesi", false);
+                if (typeof renderLawsuit === 'function') renderLawsuit();
+                updateUI();
+                saveGame(true);
+            } else {
+                notify(data.msg, 'error');
+            }
+        });
+
+        window.socket.on('debt_repaid_live', (data) => {
+            if (data.debtsGiven !== undefined) gameState.debtsGiven = data.debtsGiven;
+            if (data.amount) updateBalance(data.amount, `${data.debtor} Kişisinden Geri Ödeme`, true);
+            notify(`[Banka] ${data.debtor} adlı oyuncu size olan ${data.amount} 🪙 borcunu geri ödedi!`, "success");
+            if (typeof renderLawsuit === 'function') renderLawsuit();
             updateUI();
             saveGame(true);
         });
@@ -442,11 +504,14 @@ document.addEventListener('DOMContentLoaded', () => {
         window.socket.on('global_news_sync', (newsList) => {
             let ticker = document.getElementById('global-news-ticker');
             if (ticker) {
-                let defaultMsg = 'Sayın ada sakinleri, "Dilek/Şikayet Kutusuna" adada olmasını istediğiniz yeni özellikleri veya çalışmayan özellikleri bizlere bildirebilirsiniz.';
+                let defaultHtml = `<span style="display:inline-block; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:4px 12px; border-radius:20px; margin-right:20px; font-size:0.85rem; color:#94a3b8;">📢 Sayın ada sakinleri, "Dilek/Şikayet Kutusuna" adada olmasını istediğiniz yeni özellikleri veya çalışmayan özellikleri bizlere bildirebilirsiniz.</span>`;
                 if (!newsList || newsList.length === 0) {
-                    ticker.innerHTML = defaultMsg;
+                    ticker.innerHTML = defaultHtml;
                 } else {
-                    ticker.innerHTML = defaultMsg + ' &nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp; ' + newsList.map(n => `<span style="color:#a78bfa">[${n.sender}]</span>: ${n.msg}`).join(' &nbsp;&nbsp;|&nbsp;&nbsp; ');
+                    let newsHtml = newsList.map(n => {
+                        return `<span style="display:inline-block; background:rgba(167, 139, 250, 0.12); border:1px solid rgba(167, 139, 250, 0.25); padding:4px 12px; border-radius:20px; margin-right:20px; font-size:0.85rem; color:#f8fafc;"><strong style="color:#c084fc;">[${n.sender}]</strong>: ${n.msg}</span>`;
+                    }).join('');
+                    ticker.innerHTML = defaultHtml + newsHtml;
                 }
             }
         });
@@ -1028,8 +1093,8 @@ function onNewMonth() {
 }
 
 function generateDailyOrders() {
-    // Yalnızca ilk 12 ayda ve bir işte çalışıyorsa Npc görevleri gelsin
-    if(gameState.accountAgeMonths <= 12 && gameState.jobType !== null) {
+    // Aktif bir işte çalışıyorsa günlük vardiya görevleri gelsin
+    if(gameState.jobType !== null) {
         // Eskileri temizle
         gameState.activeOrders = [];
         
@@ -1413,23 +1478,51 @@ function renderLawsuit() {
     if (!list) return;
     
     list.innerHTML = '';
+    
+    // Verdiğim Borçlar (Alacaklarım)
+    let givenHtml = '<div style="margin-bottom:15px;"><h4 style="color:var(--clr-success); margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:4px; font-size:0.85rem;">Verdiğim Borçlar (Alacaklarım)</h4>';
     if (!gameState.debtsGiven || gameState.debtsGiven.length === 0) {
-        list.innerHTML = '<div style="color:var(--clr-text-muted);">Gönderilmiş aktif borcunuz yok.</div>';
-        return;
+        givenHtml += '<div style="color:var(--clr-text-muted); font-size:0.8rem; padding:5px 0;">Gönderilmiş aktif borcunuz yok.</div>';
+    } else {
+        gameState.debtsGiven.forEach((debt) => {
+            let monthsPassed = ((gameState.time.year - debt.startYear) * 12) + (gameState.time.month - debt.startMonth);
+            let isOverdue = monthsPassed >= debt.term;
+            let color = isOverdue ? "var(--clr-danger)" : "var(--clr-warning)";
+            let status = isOverdue ? "Vadesi Doldu! İcra takibi (dava) başlatabilirsiniz." : `Beklemede (${monthsPassed}/${debt.term} Ay)`;
+            
+            givenHtml += `<div style="padding:8px; background:rgba(255,255,255,0.02); border-left:3px solid ${color}; margin-bottom:5px; border-radius:4px; font-size:0.8rem;">
+                <strong>Kime:</strong> ${debt.target} <br>
+                <strong>Miktar:</strong> ${debt.amount.toLocaleString('tr-TR')} 🪙 <br>
+                <span style="font-size:0.75rem; color:${color};">${status}</span>
+            </div>`;
+        });
     }
+    givenHtml += '</div>';
 
-    gameState.debtsGiven.forEach((debt) => {
-        let monthsPassed = ((gameState.time.year - debt.startYear) * 12) + (gameState.time.month - debt.startMonth);
-        let isOverdue = monthsPassed >= debt.term;
-        let color = isOverdue ? "var(--clr-danger)" : "var(--clr-warning)";
-        let status = isOverdue ? "Vadesi Doldu! İcra Takibi (Dava) Başlatabilirsiniz." : `Beklemede (${monthsPassed}/${debt.term} Ay)`;
-        
-        list.innerHTML += `<div style="padding:10px; background:rgba(0,0,0,0.3); border-left:3px solid ${color}; margin-bottom:5px;">
-            <strong>Kime:</strong> ${debt.target} <br>
-            <strong>Miktar:</strong> ${debt.amount} 🪙 <br>
-            <span style="font-size:0.8rem; color:${color};">${status}</span>
-        </div>`;
-    });
+    // Aldığım Borçlar (Borçlarım)
+    let takenHtml = '<div><h4 style="color:var(--clr-danger); margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:4px; font-size:0.85rem;">Aldığım Borçlar (Borçlarım)</h4>';
+    if (!gameState.debtsTaken || gameState.debtsTaken.length === 0) {
+        takenHtml += '<div style="color:var(--clr-text-muted); font-size:0.8rem; padding:5px 0;">Aldığınız aktif borç yok.</div>';
+    } else {
+        gameState.debtsTaken.forEach((debt) => {
+            let monthsPassed = ((gameState.time.year - debt.startYear) * 12) + (gameState.time.month - debt.startMonth);
+            let isOverdue = monthsPassed >= debt.term;
+            let color = isOverdue ? "var(--clr-danger)" : "var(--clr-warning)";
+            let status = isOverdue ? "Vadesi Geçti!" : `Kalan Vade: ${debt.term - monthsPassed} Ay`;
+            
+            takenHtml += `<div style="padding:8px; background:rgba(255,255,255,0.02); border-left:3px solid ${color}; margin-bottom:5px; border-radius:4px; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem;">
+                <div>
+                    <strong>Kimden:</strong> ${debt.creditor} <br>
+                    <strong>Miktar:</strong> ${debt.amount.toLocaleString('tr-TR')} 🪙 <br>
+                    <span style="font-size:0.75rem; color:${color};">${status}</span>
+                </div>
+                <button class="btn-primary" style="padding:4px 10px; font-size:0.75rem; border-radius:5px; background:var(--clr-success); box-shadow:none;" onclick="payBackDebt('${debt.creditor}', ${debt.amount})">Öde</button>
+            </div>`;
+        });
+    }
+    takenHtml += '</div>';
+
+    list.innerHTML = givenHtml + takenHtml;
 }
 
 function fileLawsuit() {
@@ -1485,9 +1578,14 @@ function updateBalance(num, desc, isIncome) {
     addTransaction(isIncome ? 'income' : 'expense', Math.abs(num), desc);
     elm.balanceAmount.textContent = gameState.balance.toLocaleString('tr-TR');
     
-    // Grafikler için aylık yığın (Toplanan Para)
-    if(isIncome) gameState.currentMonthIncome += Math.abs(num);
-    else gameState.currentMonthExpense += Math.abs(num);
+    // Grafikler için aylık yığın (Toplanan Para) ve kümülatif toplamlar
+    if(isIncome) {
+        gameState.currentMonthIncome += Math.abs(num);
+        gameState.totalIncome = (gameState.totalIncome || 0) + Math.abs(num);
+    } else {
+        gameState.currentMonthExpense += Math.abs(num);
+        gameState.totalExpense = (gameState.totalExpense || 0) + Math.abs(num);
+    }
     
     // ZORUNLU MEVDUAT KURTARMASI
     if(gameState.balance <= -28000 && gameState.activeDeposits.length > 0) {
@@ -1684,10 +1782,26 @@ function updateUI() {
         elm.transactions.innerHTML += `<div class="transaction-item ${t.type}"><div class="info"><strong>${t.desc}</strong><small>${t.dateStr}</small></div><div class="amount">${t.amount.toLocaleString('tr-TR')}</div></div>`;
     });
     
-    let curInc = gameState.currentMonthIncome || 0;
-    let curExp = gameState.currentMonthExpense || 0;
-    document.getElementById('financial-flow').textContent = `Bu Ayki Gider: ${curExp.toLocaleString('tr-TR')} 🪙 | Gelir: ${curInc.toLocaleString('tr-TR')} 🪙`;
+    let totInc = gameState.totalIncome || 0;
+    let totExp = gameState.totalExpense || 0;
+    document.getElementById('financial-flow').textContent = `Toplam Gider: ${totExp.toLocaleString('tr-TR')} 🪙 | Gelir: ${totInc.toLocaleString('tr-TR')} 🪙`;
     
+    // Bildirim okunmamış sayısı badge güncellemesi
+    const badge = document.getElementById('unread-count');
+    if (badge) {
+        if (gameState.unreadNotifications > 0) {
+            badge.textContent = gameState.unreadNotifications;
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    // Aktif borçları ve alacakları listele
+    if (typeof renderLawsuit === 'function') {
+        renderLawsuit();
+    }
+
     updateTimeUI();
     updateSurvivalUI();
 }
@@ -2467,10 +2581,51 @@ if (oldOpenModal && !oldOpenModal.hasAdminHook) {
     window.openModal = function(id) {
         if(id === 'modal-admin' && window.renderAdminPanel) window.renderAdminPanel();
         if(id === 'modal-uni' && window.socket) window.socket.emit('get_online_players');
+        if(id === 'modal-police' && window.renderLawsuitsHistory) window.renderLawsuitsHistory();
         oldOpenModal(id);
     };
     window.openModal.hasAdminHook = true;
 }
+
+window.renderLawsuitsHistory = function() {
+    const list = document.getElementById('lawsuit-history-list');
+    if (!list) return;
+    
+    list.innerHTML = '';
+    let lawsuits = gameState.lawsuits || [];
+    
+    if (lawsuits.length === 0) {
+        list.innerHTML = '<div style="text-align:center; color:var(--clr-text-muted); padding:20px 0;">Dahil olduğunuz herhangi bir dava geçmişi bulunmamaktadır.</div>';
+        return;
+    }
+    
+    let html = '';
+    let reversedLawsuits = [...lawsuits].reverse();
+    
+    reversedLawsuits.forEach(law => {
+        let typeColor = law.type === 'Hakaret' ? '#f43f5e' : (law.type === 'İcra (Borç)' ? '#f59e0b' : '#3b82f6');
+        let outcomeColor = law.outcome.includes('Kazanıldı') ? 'var(--clr-success)' : (law.outcome.includes('Kaybedildi') ? 'var(--clr-danger)' : 'var(--clr-text-muted)');
+        
+        html += `<div style="padding:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-left:4px solid ${typeColor}; border-radius:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-size:0.75rem; color:var(--clr-text-muted);">${law.dateStr}</span>
+                <span style="font-size:0.8rem; font-weight:bold; color:${typeColor}; background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px;">${law.type}</span>
+            </div>
+            <div style="font-size:0.85rem; margin-bottom:6px;">
+                <strong>Davacı:</strong> ${law.plaintiff} &nbsp;|&nbsp; <strong>Davalı:</strong> ${law.defendant}
+            </div>
+            <div style="font-size:0.85rem; color:var(--clr-text-muted); line-height:1.4; margin-bottom:6px;">
+                ${law.msg}
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; border-top:1px solid rgba(255,255,255,0.05); padding-top:6px; margin-top:6px;">
+                <span>Durum: <strong style="color:${outcomeColor};">${law.outcome}</strong></span>
+                ${law.penalty > 0 ? `<span style="font-weight:bold; color:#fbbf24;">${law.penalty.toLocaleString('tr-TR')} 🪙</span>` : ''}
+            </div>
+        </div>`;
+    });
+    
+    list.innerHTML = html;
+};
 
 window.renderUniStudents = function() {
     const list = document.getElementById('uni-students-list');
@@ -2776,6 +2931,42 @@ window.publishGlobalNews = function() {
 
     if (window.socket) {
         window.socket.emit('send_global_news', { message: msg.trim() });
+    } else {
+        notify("Sunucu bağlantısı yok.", "error");
+    }
+};
+
+window.payBackDebt = function(creditor, amount) {
+    if (confirm(`${creditor} adlı oyuncuya olan ${amount.toLocaleString('tr-TR')} 🪙 borcunuzu geri ödemek istiyor musunuz?`)) {
+        if (gameState.balance < amount) {
+            notify("Borcu ödemek için yeterli bakiyeniz bulunmamaktadır.", "error");
+            return;
+        }
+        if (window.socket) {
+            window.socket.emit('pay_back_debt', { creditor: creditor, amount: amount });
+        } else {
+            notify("Sunucu bağlantısı yok.", "error");
+        }
+    }
+};
+
+window.depositBurs = function() {
+    let amountStr = prompt("Üniversite öğrencilerine yatırmak istediğiniz toplam burs miktarını girin:");
+    if (amountStr === null) return;
+    
+    let amount = parseInt(amountStr);
+    if (isNaN(amount) || amount <= 0) {
+        notify("Lütfen geçerli ve pozitif bir burs miktarı yazın.", "error");
+        return;
+    }
+    
+    if (gameState.balance < amount) {
+        notify("Bu miktarda burs yatırmak için bakiyeniz yetersiz.", "error");
+        return;
+    }
+    
+    if (window.socket) {
+        window.socket.emit('deposit_burs', { amount: amount });
     } else {
         notify("Sunucu bağlantısı yok.", "error");
     }

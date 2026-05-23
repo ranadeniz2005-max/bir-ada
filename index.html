@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
+    <script>
+        // Eski Replit adresinden gelen oyuncuları otomatik olarak yeni Render sunucusuna yönlendir
+        if (window.location.hostname.includes('replit.dev') || window.location.hostname.includes('repl.co') || window.location.hostname.includes('replit.app')) {
+            window.location.replace('https://bir-ada.onrender.com');
+        }
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>R&B Island - Economy Simulator</title>
@@ -65,7 +71,7 @@
             <p>Sağ alttaki Danışman Bot standart bir robot değildir! Sizin o anki kilitli bakiyenizi, açlık seviyenizi ve yaşınızı okuyabilen <b>Gelişmiş Bir NLP (Dil İşleme) Yapay Zekasıdır.</b> Bota "Durumum ne, bana analiz yap" dediğinizde harf harf yanıt yazarak (Typing effect) size özel canlı finansal/sağlık tavsiyeleri verir!</p>
             
             <h3 style="color:#10b981; margin-top:15px;">7. Sunucu Bağlantısı, Gerçek Zamanlı Bilanço ve Kayıt</h3>
-            <p>Oyunumuz **gerçek zamanlı (multiplayer)** bir sunucuda çalışmaktadır. Ana ekrandaki finans tablosu artık <b>Gerçek Zamanlıdır</b>; harcadığınız veya kazandığınız her kuruş anında "Bu Ayki Gelir / Gider" sayacına işlenir. Oyun ilerlemeniz **her 10 saniyede bir otomatik olarak Bulut Veritabanına** kaydedilir. Oyundan çıkmadan önce içinizin rahat etmesi için "💾 Kaydet" butonunu da kullanabilirsiniz.</p>
+            <p>Oyunumuz **gerçek zamanlı (multiplayer)** bir sunucuda çalışmaktadır. Ana ekrandaki finans tablosu artık <b>Gerçek Zamanlıdır</b>; harcadığınız veya kazandığınız her kuruş anında "Toplam Gelir / Gider" sayacına işlenir. Oyun ilerlemeniz **her 10 saniyede bir otomatik olarak Bulut Veritabanına** kaydedilir. Oyundan çıkmadan önce içinizin rahat etmesi için "💾 Kaydet" butonunu da kullanabilirsiniz.</p>
             
             <button class="btn-primary" style="margin-top:20px; width:100%; font-size:1.1rem; padding:15px;" onclick="document.getElementById('modal-guide').classList.remove('active')">Tamam, Kuralları Anladım</button>
         </div>
@@ -360,6 +366,7 @@
         <h2>👮 Karakol & Mahkeme</h2>
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab(this, 'police-sikayet')">Şikayet & Dava Merkezi</button>
+            <button class="tab-btn" onclick="switchTab(this, 'police-davalar')">Dava Geçmişi</button>
         </div>
         <div class="tab-content active" id="police-sikayet">
             <p style="font-size:0.8rem; color:var(--clr-text-muted);">Oyuncular arası anlaşmazlıkları (borç ödememe vb.) yargıya taşıyın. Dava açma harcı: 3.000 🪙</p>
@@ -368,6 +375,12 @@
                 <input type="text" id="lawsuit-reason" placeholder="Dava Sebebi (Örn: Borç İhlali, Hakaret)" style="width:100%; padding:10px; border-radius:5px; background:rgba(255,255,255,0.1); color:white; border:none; outline:none;">
             </div>
             <button class="btn-danger" id="btn-file-lawsuit" style="width:100%; margin-top:10px;" onclick="fileLawsuit()">Dava Aç (-3.000 🪙)</button>
+        </div>
+        <div class="tab-content" id="police-davalar">
+            <p style="font-size:0.8rem; color:var(--clr-text-muted); margin-bottom:10px;">Dahil olduğunuz tüm davaların detaylı geçmişi.</p>
+            <div id="lawsuit-history-list" style="font-size:0.9rem; max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;">
+                Henüz açılmış bir dava bulunmamaktadır.
+            </div>
         </div>
     </div></div>
 
@@ -393,6 +406,7 @@
             <p>Devlet işinden atılmamak için 30. aya kadar (2.5 Yıl) Diploma almalısın. Okul ücretsizdir, ancak 1 Sınıf 12 ay sürer. Mezuniyet diplomasını teslim almak 50.000 🪙 tutar.</p>
             <button class="btn-secondary" id="btn-study-uni">Ücretsiz Kaydol (Aylık Part-Time Çalışırken Burs Alırsın)</button>
             <button class="btn-primary" id="btn-buy-diploma" style="margin-top:10px; display:none;">Diplomayı Teslim Al (-50.000 🪙)</button>
+            <button class="btn-primary" id="btn-deposit-burs" style="margin-top:10px; width:100%; background:var(--clr-success); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);" onclick="depositBurs()">🎓 Öğrencilere Burs Yatır</button>
             
             <h3 style="margin-top:20px; font-size:1.1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">📚 Şu An Üniversite Okuyanlar</h3>
             <div id="uni-students-list" style="margin-top:10px; font-size:0.9rem; color:var(--clr-text-muted); max-height:150px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;">

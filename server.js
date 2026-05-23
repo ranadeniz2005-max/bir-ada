@@ -83,6 +83,54 @@ async function saveDatabaseKeys(keysArray) {
     }
 }
 
+function addNotification(username, message, type = 'info') {
+    if (!db[username]) return;
+    if (!db[username].notificationHistory) db[username].notificationHistory = [];
+    
+    // Zamanı hesapla
+    let t = getCalculatedTime();
+    let dateStr = `${t.year}.Y ${t.month}.A ${t.day}.G (${t.phase === 0 ? 'Sabah' : t.phase === 1 ? 'Öğle' : 'Akşam'})`;
+    
+    // Bildirimi listeye ekle (Maksimum son 30 bildirimi sakla)
+    db[username].notificationHistory.push({
+        message: message,
+        type: type,
+        dateStr: dateStr
+    });
+    if (db[username].notificationHistory.length > 30) {
+        db[username].notificationHistory.shift();
+    }
+    
+    // Okunmamış sayacını artır
+    db[username].unreadNotifications = (db[username].unreadNotifications || 0) + 1;
+    
+    // Değişikliği veritabanına kaydet
+    saveDatabaseKey(username, db[username]);
+
+    // Eğer oyuncu online ise canlı soket ile bildir
+    for (let id in players) {
+        if (players[id].username === username) {
+            io.to(id).emit('notification_sync', {
+                history: db[username].notificationHistory,
+                unread: db[username].unreadNotifications
+            });
+            break;
+        }
+    }
+}
+
+function syncLawsuits(username) {
+    if (!db[username]) return;
+    for (let id in players) {
+        if (players[id].username === username) {
+            io.to(id).emit('lawsuit_sync', {
+                lawsuits: db[username].lawsuits || []
+            });
+            break;
+        }
+    }
+}
+
 function loadLocalDatabase() {
     if (fs.existsSync(DB_FILE)) {
         try {
@@ -168,6 +216,9 @@ io.on('connection', (socket) => {
             clientState.friendRequests = serverState.friendRequests || clientState.friendRequests;
             clientState.sentRequests = serverState.sentRequests || clientState.sentRequests;
             clientState.friends = serverState.friends || clientState.friends;
+            clientState.notificationHistory = serverState.notificationHistory || [];
+            clientState.unreadNotifications = serverState.unreadNotifications || 0;
+            clientState.lawsuits = serverState.lawsuits || [];
 
             saveDatabaseKey(username, clientState);
         }
@@ -220,6 +271,13 @@ io.on('connection', (socket) => {
 
         // Göndericiye başarılı yanıtını dön
         socket.emit('p2p_transfer_response', { success: true, msg: `${receiver} adlı oyuncuya ${amount} 🪙 gönderildi.`, amount: amount, debtsGiven: db[sender].debtsGiven });
+
+        // Sunucu tarafı kalıcı bildirimler
+        let transferMsg = term > 0 
+            ? `${sender} size ${term} ay vadeli ${amount} 🪙 borç gönderdi!` 
+            : `${sender} size ${amount} 🪙 gönderdi!`;
+        addNotification(receiver, transferMsg, 'success');
+        addNotification(sender, `${receiver} adlı oyuncuya ${amount} 🪙 gönderildi.`, 'info');
 
         // Eğer alıcı o an aktif (Online) ise canlı bildirim gönder
         for (let id in players) {
@@ -294,6 +352,9 @@ io.on('connection', (socket) => {
 
         socket.emit('friend_request_response', { success: true, target: receiver, msg: `${receiver} kişisine istek iletildi.` });
 
+        // Sunucu tarafı kalıcı bildirim
+        addNotification(receiver, `${sender} size arkadaşlık isteği gönderdi!`, 'info');
+
         // Alıcı online ise canlı bildir
         for (let id in players) {
             if (players[id].username === receiver) {
@@ -328,6 +389,10 @@ io.on('connection', (socket) => {
         }
 
         saveDatabaseKeys([sender, receiver]);
+
+        // Sunucu tarafı kalıcı bildirimler
+        addNotification(sender, `${receiver} arkadaşlık isteğinizi kabul etti!`, 'success');
+        addNotification(receiver, `${sender} ile arkadaş oldunuz!`, 'success');
 
         // Gönderen online ise ona haber ver
         for (let id in players) {
@@ -400,18 +465,60 @@ io.on('connection', (socket) => {
             if (hasInsult) break;
         }
 
+        let t = getCalculatedTime();
+        let dateStr = `${t.year}.Y ${t.month}.A ${t.day}.G (${t.phase === 0 ? 'Sabah' : t.phase === 1 ? 'Öğle' : 'Akşam'})`;
+
+        if (!db[plaintiff].lawsuits) db[plaintiff].lawsuits = [];
+        if (!db[defendant].lawsuits) db[defendant].lawsuits = [];
+
         if (hasInsult) {
             // Davacı kazanır. Sanıktan 10.000 🪙 tazminat kesilir.
             let penalty = 10000;
             db[defendant].balance -= penalty;
             db[plaintiff].balance += penalty;
+
+            let plaintiffLog = {
+                dateStr: dateStr,
+                plaintiff: plaintiff,
+                defendant: defendant,
+                type: 'Hakaret',
+                outcome: 'Dava Kazanıldı',
+                penalty: penalty,
+                msg: `${defendant} adlı oyuncuya açtığınız hakaret davasını kazandınız. ${penalty} 🪙 tazminat hesabınıza yatırıldı.`
+            };
+            let defendantLog = {
+                dateStr: dateStr,
+                plaintiff: plaintiff,
+                defendant: defendant,
+                type: 'Hakaret',
+                outcome: 'Dava Kaybedildi',
+                penalty: penalty,
+                msg: `${plaintiff} size hakaret davası açtı ve kazandı. Hesabınızdan ${penalty} 🪙 kesildi.`
+            };
+            db[plaintiff].lawsuits.push(plaintiffLog);
+            db[defendant].lawsuits.push(defendantLog);
+
             saveDatabaseKeys([plaintiff, defendant]);
 
-            socket.emit('lawsuit_response', { success: true, won: true, penalty: penalty, msg: `Hakaret tespit edildi! Dava Kazanıldı. Sanıktan ${penalty} 🪙 tazminat alındı.` });
+            socket.emit('lawsuit_response', { 
+                success: true, 
+                won: true, 
+                penalty: penalty, 
+                msg: `Hakaret tespit edildi! Dava Kazanıldı. Sanıktan ${penalty} 🪙 tazminat alındı.`,
+                lawsuits: db[plaintiff].lawsuits 
+            });
             
+            // Kalıcı bildirimler
+            addNotification(defendant, `${plaintiff} size hakaret/küfür davası açtı ve KAZANDI. Adliye hesabınızdan ${penalty} 🪙 tazminat kesildi.`, 'error');
+            addNotification(plaintiff, `${defendant} adlı oyuncuya açtığınız hakaret davasını kazandınız! Hesabınıza ${penalty} 🪙 tazminat yatırıldı.`, 'success');
+
             for (let id in players) {
                 if (players[id].username === defendant) {
-                    io.to(id).emit('lawsuit_lost', { penalty: penalty, msg: `${plaintiff} size hakaret/küfür davası açtı ve KAZANDI. Adliye hesabınızdan ${penalty} 🪙 tazminat kesti.` });
+                    io.to(id).emit('lawsuit_lost', { 
+                        penalty: penalty, 
+                        msg: `${plaintiff} size hakaret/küfür davası açtı ve KAZANDI. Adliye hesabınızdan ${penalty} 🪙 tazminat kesti.`,
+                        lawsuits: db[defendant].lawsuits
+                    });
                     break;
                 }
             }
@@ -453,25 +560,137 @@ io.on('connection', (socket) => {
                     if (tdIdx > -1) db[defendant].debtsTaken.splice(tdIdx, 1);
                 }
 
+                let plaintiffLog = {
+                    dateStr: dateStr,
+                    plaintiff: plaintiff,
+                    defendant: defendant,
+                    type: 'İcra (Borç)',
+                    outcome: 'Dava Kazanıldı',
+                    penalty: totalCollection,
+                    msg: `${defendant} adlı oyuncuya ödenmemiş borç davası açtınız. Faizli olarak ${totalCollection} 🪙 tahsil edildi.`
+                };
+                let defendantLog = {
+                    dateStr: dateStr,
+                    plaintiff: plaintiff,
+                    defendant: defendant,
+                    type: 'İcra (Borç)',
+                    outcome: 'Dava Kaybedildi',
+                    penalty: totalCollection,
+                    msg: `${plaintiff} ödenmemiş borç için icra takibi başlattı. Hesabınızdan faiziyle ${totalCollection} 🪙 kesildi.`
+                };
+                db[plaintiff].lawsuits.push(plaintiffLog);
+                db[defendant].lawsuits.push(defendantLog);
+
                 saveDatabaseKeys([plaintiff, defendant]);
 
-                socket.emit('lawsuit_response', { success: true, won: true, penalty: totalCollection, msg: `Kayıtlı borç tespit edildi! Sanıktan İcra yoluyla ${totalCollection} 🪙 (Faizli) zorla tahsil edildi.`, debtsGiven: db[plaintiff].debtsGiven });
+                socket.emit('lawsuit_response', { 
+                    success: true, 
+                    won: true, 
+                    penalty: totalCollection, 
+                    msg: `Kayıtlı borç tespit edildi! Sanıktan İcra yoluyla ${totalCollection} 🪙 (Faizli) zorla tahsil edildi.`, 
+                    debtsGiven: db[plaintiff].debtsGiven,
+                    lawsuits: db[plaintiff].lawsuits
+                });
                 
+                // Kalıcı bildirimler
+                addNotification(defendant, `${plaintiff} ödenmemiş borç için İcra Davası açtı! Hesabınızdan faiziyle ${totalCollection} 🪙 kesildi.`, 'error');
+                addNotification(plaintiff, `${defendant} adlı oyuncuya açtığınız borç davasını kazandınız! Hesabınıza ${totalCollection} 🪙 (Faizli) yatırıldı.`, 'success');
+
                 for (let id in players) {
                     if (players[id].username === defendant) {
-                        io.to(id).emit('lawsuit_lost', { penalty: totalCollection, msg: `${plaintiff} ödenmemiş borç için İcra Davası açtı! Hesabınızdan faiziyle ${totalCollection} 🪙 kesildi.` });
+                        io.to(id).emit('lawsuit_lost', { 
+                            penalty: totalCollection, 
+                            msg: `${plaintiff} ödenmemiş borç için İcra Davası açtı! Hesabınızdan faiziyle ${totalCollection} 🪙 kesildi.`,
+                            debtsTaken: db[defendant].debtsTaken,
+                            lawsuits: db[defendant].lawsuits
+                        });
                         break;
                     }
                 }
             } else if (debtExistsButNotOverdue) {
                 // Borç var ama vadesi dolmamış, reddet (Ceza yok)
-                socket.emit('lawsuit_response', { success: true, won: false, msg: `Sanığın size borcu var ancak vadesi henüz dolmamış. Vadesi dolmadan icra davası açılamaz!` });
+                let plaintiffLog = {
+                    dateStr: dateStr,
+                    plaintiff: plaintiff,
+                    defendant: defendant,
+                    type: 'İcra (Borç)',
+                    outcome: 'Dava Reddedildi',
+                    penalty: 0,
+                    msg: `${defendant} adlı oyuncuya açtığınız icra davası reddedildi. Borç vadesi henüz dolmamış.`
+                };
+                let defendantLog = {
+                    dateStr: dateStr,
+                    plaintiff: plaintiff,
+                    defendant: defendant,
+                    type: 'İcra (Borç)',
+                    outcome: 'Dava Reddedildi (Lehte)',
+                    penalty: 0,
+                    msg: `${plaintiff} vadesi dolmayan borç için icra davası açtı, Yargıç reddetti.`
+                };
+                db[plaintiff].lawsuits.push(plaintiffLog);
+                db[defendant].lawsuits.push(defendantLog);
+
+                saveDatabaseKeys([plaintiff, defendant]);
+
+                socket.emit('lawsuit_response', { 
+                    success: true, 
+                    won: false, 
+                    msg: `Sanığın size borcu var ancak vadesi henüz dolmamış. Vadesi dolmadan icra davası açılamaz!`,
+                    lawsuits: db[plaintiff].lawsuits 
+                });
+
+                syncLawsuits(defendant);
             } else {
                 // Yalan beyan, davacı ceza yer
                 let fakeClaimPenalty = 5000;
                 db[plaintiff].balance -= fakeClaimPenalty;
-                saveDatabaseKey(plaintiff, db[plaintiff]);
-                socket.emit('lawsuit_response', { success: true, won: false, penalty: fakeClaimPenalty, msg: `Sanığın loglarında hakaret veya kayıtlı borç bulunamadı. Asılsız dava nedeniyle Adliye sizden ${fakeClaimPenalty} 🪙 ceza kesti.` });
+
+                let plaintiffLog = {
+                    dateStr: dateStr,
+                    plaintiff: plaintiff,
+                    defendant: defendant,
+                    type: 'Asılsız Dava',
+                    outcome: 'Dava Kaybedildi',
+                    penalty: fakeClaimPenalty,
+                    msg: `${defendant} adlı oyuncuya açtığınız dava asılsız bulundu. Asılsız dava sebebiyle ${fakeClaimPenalty} 🪙 ceza kesildi.`
+                };
+                let defendantLog = {
+                    dateStr: dateStr,
+                    plaintiff: plaintiff,
+                    defendant: defendant,
+                    type: 'Asılsız Dava',
+                    outcome: 'Dava Kazanıldı',
+                    penalty: 0,
+                    msg: `${plaintiff} size asılsız dava açmaya çalıştı fakat Yargıç davayı reddetti.`
+                };
+                db[plaintiff].lawsuits.push(plaintiffLog);
+                db[defendant].lawsuits.push(defendantLog);
+
+                saveDatabaseKeys([plaintiff, defendant]);
+
+                socket.emit('lawsuit_response', { 
+                    success: true, 
+                    won: false, 
+                    penalty: fakeClaimPenalty, 
+                    msg: `Sanığın loglarında hakaret veya kayıtlı borç bulunamadı. Asılsız dava nedeniyle Adliye sizden ${fakeClaimPenalty} 🪙 ceza kesti.`,
+                    lawsuits: db[plaintiff].lawsuits 
+                });
+                
+                // Kalıcı bildirimler
+                addNotification(plaintiff, `${defendant} adlı oyuncuya açtığınız dava asılsız bulundu. Adliye hesabınızdan ${fakeClaimPenalty} 🪙 ceza kesti.`, 'error');
+                addNotification(defendant, `${plaintiff} size asılsız dava açmaya çalıştı fakat Yargıç davayı reddetti. Davacıya ${fakeClaimPenalty} 🪙 ceza uygulandı.`, 'info');
+
+                syncLawsuits(defendant);
+
+                for (let id in players) {
+                    if (players[id].username === defendant) {
+                        io.to(id).emit('broadcast_notification', {
+                            msg: `${plaintiff} size asılsız dava açmaya çalıştı fakat Yargıç davayı reddetti. Davacıya ${fakeClaimPenalty} 🪙 ceza uygulandı.`,
+                            type: 'info'
+                        });
+                        break;
+                    }
+                }
             }
         }
     });
@@ -723,6 +942,137 @@ io.on('connection', (socket) => {
     socket.on('get_feedbacks', () => {
         if (!players[socket.id] || !players[socket.id].isAdmin) return;
         socket.emit('feedbacks_response', db['ADMIN_SYSTEM'].feedbacks || []);
+    });
+
+    socket.on('pay_back_debt', (data) => {
+        if (!players[socket.id]) return;
+        let debtor = players[socket.id].username; // Borçlu
+        let creditor = data.creditor;             // Alacaklı
+        let amount = parseInt(data.amount);
+
+        if (!db[debtor] || !db[creditor]) {
+            socket.emit('pay_back_debt_response', { success: false, msg: 'İlişkili oyuncular bulunamadı.' });
+            return;
+        }
+
+        // Borçlunun bakiyesini kontrol et
+        if (db[debtor].balance < amount) {
+            socket.emit('pay_back_debt_response', { success: false, msg: 'Bakiyeniz borcu ödemek için yetersiz.' });
+            return;
+        }
+
+        // Borç kaydını bul ve sil
+        if (db[debtor].debtsTaken) {
+            let index = db[debtor].debtsTaken.findIndex(d => d.creditor === creditor && d.amount === amount);
+            if (index > -1) {
+                db[debtor].debtsTaken.splice(index, 1);
+            }
+        }
+        if (db[creditor].debtsGiven) {
+            let index = db[creditor].debtsGiven.findIndex(d => d.target === debtor && d.amount === amount);
+            if (index > -1) {
+                db[creditor].debtsGiven.splice(index, 1);
+            }
+        }
+
+        // Parayı transfer et
+        db[debtor].balance -= amount;
+        db[creditor].balance += amount;
+
+        // Veritabanını güncelle
+        saveDatabaseKeys([debtor, creditor]);
+
+        // Borçluya yanıt dön
+        socket.emit('pay_back_debt_response', { 
+            success: true, 
+            msg: `${creditor} adlı oyuncuya olan ${amount} 🪙 borcunuz başarıyla ödendi.`,
+            amount: amount,
+            debtsTaken: db[debtor].debtsTaken
+        });
+
+        // Alacaklıya ve borçluya bildirim gönder
+        addNotification(creditor, `${debtor} size olan ${amount} 🪙 borcunu geri ödedi!`, 'success');
+        addNotification(debtor, `${creditor} adlı oyuncuya olan ${amount} 🪙 borcunuzu ödediniz.`, 'info');
+        
+        for (let id in players) {
+            if (players[id].username === creditor) {
+                io.to(id).emit('debt_repaid_live', { debtor: debtor, amount: amount, debtsGiven: db[creditor].debtsGiven });
+                break;
+            }
+        }
+    });
+
+    socket.on('deposit_burs', (data) => {
+        if (!players[socket.id]) return;
+        let sender = players[socket.id].username;
+        let amount = parseInt(data.amount);
+
+        if (isNaN(amount) || amount <= 0) {
+            socket.emit('burs_deposit_response', { success: false, msg: 'Geçersiz miktar.' });
+            return;
+        }
+
+        if (!db[sender] || db[sender].balance < amount) {
+            socket.emit('burs_deposit_response', { success: false, msg: 'Bakiyeniz bu burs miktarını karşılamak için yetersiz.' });
+            return;
+        }
+
+        // Aktif öğrencileri bul (db içinde pData.isStudent === true)
+        let studentsList = [];
+        for (let username in db) {
+            if (username === 'ADMIN_SYSTEM' || username === 'SERVER_TIME' || username === 'SERVER_NEWS') continue;
+            if (db[username] && db[username].isStudent) {
+                studentsList.push(username);
+            }
+        }
+
+        if (studentsList.length === 0) {
+            socket.emit('burs_deposit_response', { success: false, msg: 'Şu anda adada aktif olarak okuyan üniversite öğrencisi bulunmamaktadır. Burs yatırılamaz.' });
+            return;
+        }
+
+        // Kişi başı burs miktarı
+        let share = Math.floor(amount / studentsList.length);
+
+        if (share <= 0) {
+            socket.emit('burs_deposit_response', { success: false, msg: 'Yatırılan miktar öğrenci sayısına bölündüğünde kişi başı en az 1 🪙 olmalıdır.' });
+            return;
+        }
+
+        // Gönderenin bakiyesini düş
+        db[sender].balance -= amount;
+        
+        // Öğrencilerin bakiyelerini artır ve bildirim ekle
+        let updatedKeys = [sender];
+        studentsList.forEach(student => {
+            db[student].balance += share;
+            updatedKeys.push(student);
+
+            addNotification(student, `${sender} Üniversite Fonu aracılığıyla size ${share} 🪙 burs yatırdı!`, 'success');
+        });
+
+        // Veritabanını güncelle
+        saveDatabaseKeys(updatedKeys);
+
+        // Göndericiye onay dön
+        socket.emit('burs_deposit_response', {
+            success: true,
+            msg: `Üniversite Burs Fonuna ${amount} 🪙 yatırdınız. ${studentsList.length} öğrenciye kişi başı ${share} 🪙 dağıtıldı!`,
+            amount: amount
+        });
+
+        // Canlı bildirimler gönder
+        studentsList.forEach(student => {
+            for (let id in players) {
+                if (players[id].username === student) {
+                    io.to(id).emit('burs_received_live', {
+                        sender: sender,
+                        share: share
+                    });
+                    break;
+                }
+            }
+        });
     });
 
     socket.on('disconnect', () => {
