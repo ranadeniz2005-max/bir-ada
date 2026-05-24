@@ -752,6 +752,37 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     // Banka
+    // Banka Kredi Önizleme Mantığı
+    function updateLoanPreview() {
+        const val = parseInt(document.getElementById('loan-amount').value);
+        const term = parseInt(document.getElementById('loan-term').value);
+        const previewEl = document.getElementById('loan-preview');
+        if (!previewEl) return;
+        
+        if (isNaN(val) || val <= 0) {
+            previewEl.style.display = 'none';
+            return;
+        }
+        
+        let interestRate = 0.035;
+        if (term === 3) interestRate = 0.045;
+        else if (term === 6) interestRate = 0.055;
+        else if (term === 12) interestRate = 0.07;
+        
+        const totalRepayment = val + (val * interestRate);
+        const monthlyPayment = Math.floor(totalRepayment / term);
+        
+        document.getElementById('loan-preview-rate').textContent = `%${(interestRate * 100).toFixed(1)}`;
+        document.getElementById('loan-preview-total').textContent = `${Math.floor(totalRepayment).toLocaleString('tr-TR')} 🪙`;
+        document.getElementById('loan-preview-monthly').textContent = `${monthlyPayment.toLocaleString('tr-TR')} 🪙 / Ay`;
+        previewEl.style.display = 'block';
+    }
+
+    const loanAmountInput = document.getElementById('loan-amount');
+    const loanTermSelect = document.getElementById('loan-term');
+    if (loanAmountInput) loanAmountInput.addEventListener('input', updateLoanPreview);
+    if (loanTermSelect) loanTermSelect.addEventListener('change', updateLoanPreview);
+
     document.getElementById('btn-take-loan').onclick = () => {
         if(gameState.bankBlocked) return notify("Hesabınız BLOKELİ! Kredi çekilemez.", "error");
         if(gameState.isStudent) return notify("Öğrenciler kredi çekemez!", "error");
@@ -761,7 +792,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const term = parseInt(document.getElementById('loan-term').value);
         if(val > 0) { 
             updateBalance(val, 'Kredi Çekimi (Gelir)', true);
-            const totalRepayment = val + (val * 0.035); // Toplam %3.5 faiz
+            
+            let interestRate = 0.035;
+            if (term === 3) interestRate = 0.045;
+            else if (term === 6) interestRate = 0.055;
+            else if (term === 12) interestRate = 0.07;
+            
+            const totalRepayment = val + (val * interestRate); // Vadeye göre faiz
             const monthlyPayment = Math.floor(totalRepayment / term);
             
             gameState.activeLoans.push({
@@ -773,6 +810,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             document.getElementById('loan-amount').value = ''; 
+            const previewEl = document.getElementById('loan-preview');
+            if (previewEl) previewEl.style.display = 'none';
             updateUI(); 
         }
     };

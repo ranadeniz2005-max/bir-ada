@@ -301,17 +301,25 @@
         </div>
         <div class="tab-content" id="bank-kredi">
             <h3>Toplam Kredi Borcunuz: <span id="current-debt">0</span> 🪙</h3>
-            <p style="font-size:0.8rem; color:var(--clr-text-muted);">Toplam %3.5 faiz anaparaya eklenir ve taksitlere bölünür. (En az asgari ücretli veya patron olunmalıdır, öğrenci çekemez).</p>
+            <p style="font-size:0.8rem; color:var(--clr-text-muted);">Kredi faiz oranları vadeye göre değişir: 1 Ay %3.5, 3 Ay %4.5, 6 Ay %5.5, 12 Ay %7 faiz anaparaya eklenir ve taksitlere bölünür. (En az asgari ücretli veya patron olunmalıdır, öğrenci çekemez).</p>
             <div class="form-group" style="margin-top:10px;">
                 <input type="number" id="loan-amount" placeholder="Miktar" style="flex:1;">
                 <select id="loan-term" style="padding:10px; border-radius:5px; background:rgba(255,255,255,0.1); color:white; border:none; outline:none;">
-                    <option value="1" style="color:black;">1 Ay Taksit</option>
-                    <option value="3" style="color:black;">3 Ay Taksit</option>
-                    <option value="6" style="color:black;">6 Ay Taksit</option>
-                    <option value="12" style="color:black;">12 Ay Taksit</option>
+                    <option value="1" style="color:black;">1 Ay Taksit (%3.5 Faiz)</option>
+                    <option value="3" style="color:black;">3 Ay Taksit (%4.5 Faiz)</option>
+                    <option value="6" style="color:black;">6 Ay Taksit (%5.5 Faiz)</option>
+                    <option value="12" style="color:black;">12 Ay Taksit (%7 Faiz)</option>
                 </select>
                 <button class="btn-primary" id="btn-take-loan">Kredi Çek</button>
             </div>
+            
+            <!-- Dinamik Kredi Geri Ödeme Önizleme Alanı -->
+            <div id="loan-preview" style="margin-top:12px; padding:12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; font-size:0.85rem; display:none; flex-direction:column; gap:6px;">
+                <div style="display:flex; justify-content:space-between;"><span>Uygulanan Faiz:</span><strong id="loan-preview-rate" style="color:#fbbf24;">%0</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>Toplam Geri Ödeme:</span><strong id="loan-preview-total" style="color:#10b981;">0 🪙</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span>Aylık Taksit:</span><strong id="loan-preview-monthly" style="color:#60a5fa;">0 🪙 / Ay</strong></div>
+            </div>
+
             <div id="active-loans-list" style="margin-top:15px; font-size:0.9rem; max-height:120px; overflow-y:auto; color:var(--clr-danger);">Krediniz Bulunmamaktadır.</div>
         </div>
         <div class="tab-content" id="bank-mevduat">
