@@ -2730,6 +2730,14 @@ window.startAcademicMinigame = function(taskId) {
     if(taskIndex === -1) return;
     
     let task = gameState.activeAcademicTasks[taskIndex];
+    
+    // Eski/legacy ekonomi oyun tiplerini anında rastgele yeni bir oyun tipine dönüştürerek hatasız çalışmasını sağla
+    const newTypes = ['reflex_test', 'simon_says', 'whack_mole', 'tic_tac_toe', 'word_scramble', 'odd_one_out'];
+    if (!newTypes.includes(task.gameType)) {
+        task.gameType = newTypes[Math.floor(Math.random() * newTypes.length)];
+        gameState.activeAcademicTasks[taskIndex].gameType = task.gameType;
+    }
+    
     currentMGOrder = { ...task, isAcademic: true };
     minigameActive = true;
     let gameWon = false;
