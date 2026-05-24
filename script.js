@@ -2604,6 +2604,19 @@ window.resolveJobApplication = function(targetUsername, isApproved) {
     }, 500);
 };
 
+window.adminSendMoney = function(targetName) {
+    let amountStr = prompt(`${targetName} adlı oyuncuya gönderilecek (veya kesilecek) para miktarını girin (Örn: Ekleme için 50000, kesinti için -20000):`);
+    if (amountStr === null) return;
+    let amount = parseInt(amountStr);
+    if (isNaN(amount) || amount === 0) {
+        notify("Lütfen geçerli bir miktar girin.", "error");
+        return;
+    }
+    if (window.socket) {
+        window.socket.emit('admin_edit_balance', { target: targetName, amount: amount });
+    }
+};
+
 // Hooking modal open to render
 const oldOpenModal = window.openModal;
 if (oldOpenModal && !oldOpenModal.hasAdminHook) {

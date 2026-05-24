@@ -816,6 +816,46 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Admin Para Gönderme / Bakiye Düzenleme
+    socket.on('admin_edit_balance', (data) => {
+        if (!players[socket.id] || !players[socket.id].isAdmin) return;
+        let target = data.target;
+        let amount = parseInt(data.amount);
+        if (isNaN(amount) || amount === 0) return;
+
+        if (!db[target]) {
+            socket.emit('admin_edit_balance_response', { success: false, msg: 'Oyuncu bulunamadı.' });
+            return;
+        }
+
+        // Hedef oyuncu online mı?
+        let isOnline = false;
+        let targetSocketId = null;
+        for (let id in players) {
+            if (players[id].username === target) {
+                isOnline = true;
+                targetSocketId = id;
+                break;
+            }
+        }
+
+        if (isOnline && targetSocketId) {
+            io.to(targetSocketId).emit('admin_balance_gift', { amount: amount });
+        } else {
+            db[target].balance += amount;
+            saveDatabaseKey(target, db[target]);
+        }
+
+        addNotification(target, `Şehir Yönetimi tarafından hesabınıza ${amount} 🪙 ${amount > 0 ? 'gönderildi' : 'kesildi'}.`, amount > 0 ? 'success' : 'error');
+
+        socket.emit('admin_edit_balance_response', { 
+            success: true, 
+            msg: `${target} adlı oyuncuya ${amount} 🪙 ${amount > 0 ? 'gönderildi' : 'kesildi'}.`, 
+            target: target,
+            newBalance: db[target].balance 
+        });
+    });
+
     // Admin Oyuncu Listesi
     socket.on('get_admin_player_data', () => {
         if (!players[socket.id] || !players[socket.id].isAdmin) return;
