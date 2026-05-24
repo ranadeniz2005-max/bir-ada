@@ -995,7 +995,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('btn-dropout-uni').onclick = () => {
         if (gameState.isStudent || gameState.universityFrozen) {
-            if (confirm("Üniversiteden ayrılmak istediğinize emin misiniz? Tüm eğitim ilerlemeniz sıfırlanacak ve tekrar kaydolmak için 18 ay beklemeniz gerekecektir.")) {
+            if (confirm("Üniversiteden ayrılmak istediğinize emin misiniz? Tüm eğitim ilerlemeniz sıfırlanacak ve tekrar kaydolmak için 12 ay beklemeniz gerekecektir.")) {
                 gameState.isStudent = false;
                 gameState.universityFrozen = false;
                 gameState.universityFrozenMonths = 0;
@@ -1003,7 +1003,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameState.universityMonths = 0;
                 gameState.monthlyCompletedAcademicTasks = 0;
                 gameState.activeAcademicTasks = [];
-                gameState.universityDropoutCooldown = 18;
+                gameState.universityDropoutCooldown = 12;
 
                 if (gameState.jobType === 'part-time') {
                     gameState.jobType = null;
@@ -1011,7 +1011,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     notify("Okuldan ayrıldığınız için Part-Time işinizden istifa ettiniz.", "info");
                 }
 
-                notify("Üniversiteden ayrıldınız. İlerlemeniz sıfırlandı ve 18 aylık bekleme süresi başladı.", "success");
+                notify("Üniversiteden ayrıldınız. İlerlemeniz sıfırlandı ve 12 aylık bekleme süresi başladı.", "success");
                 updateUI();
                 saveGame(true);
             }
