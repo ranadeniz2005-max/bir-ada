@@ -1999,11 +1999,11 @@ function updateUI() {
         document.getElementById('btn-study-uni').textContent = "Ücretsiz Kaydol (Aylık Part-Time Çalışırken Burs Alırsın)";
     }
     
-    // Academic Section Arayüz Güncellemeleri
-    const acadSection = document.getElementById('academic-section');
-    if (acadSection) {
+    // Academic Tab ve Bölüm Güncellemeleri
+    const tabAcademic = document.getElementById('tab-uni-academic');
+    if (tabAcademic) {
         if (gameState.isStudent && !gameState.hasDiploma) {
-            acadSection.style.display = 'block';
+            tabAcademic.style.display = 'inline-block';
             let completedDisp = document.getElementById('academic-completed-tasks');
             if (completedDisp) completedDisp.textContent = gameState.monthlyCompletedAcademicTasks || 0;
             
@@ -2022,7 +2022,17 @@ function updateUI() {
             }
             if (typeof renderAcademicTasks === 'function') renderAcademicTasks();
         } else {
-            acadSection.style.display = 'none';
+            tabAcademic.style.display = 'none';
+            // Eğer aktif sekme uni-academic ise ve öğrencilik bittiyse info sekmesine geri dön
+            if (document.getElementById('uni-academic').classList.contains('active')) {
+                document.getElementById('uni-academic').classList.remove('active');
+                document.getElementById('uni-info').classList.add('active');
+                
+                // Tab butonlarını güncelle
+                const uniTabs = document.getElementById('modal-uni').querySelectorAll('.tab-btn');
+                uniTabs.forEach(t => t.classList.remove('active'));
+                uniTabs[0].classList.add('active');
+            }
         }
     }
     

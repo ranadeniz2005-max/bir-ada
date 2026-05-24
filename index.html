@@ -58,8 +58,8 @@
             <h3 style="color:var(--clr-primary); margin-top:15px;">2. Çalışma ve Ceza Kotası</h3>
             <p>Maaşları hak edebilmek için her ay şahsınıza atanan asgari <b>50 Görev (Kota)</b> mecburidir. Eksik bırakılan her bir görev için <b>Maaştan Anında 500 🪙 Ceza Kesilir!</b> Yaptığınız her görev size <b>-1 Sağlık ve -1 Moral</b> kaybettirecek ve bedeninizi yıpratacaktır.</p>
 
-            <h3 style="color:var(--clr-primary); margin-top:15px;">3. Kariyer ve 17 Yönetici Sınırı</h3>
-            <p>Eğer sistemin kölesi olmak istemiyorsanız Üniversiteye yazılırsınız. <b>Öğrenciyken Market, Eğlence ve Psikiyatri Kliniği (%30) harcamaları Devlet İndirimlidir.</b> Ayrıca enflasyona karşı devlet; Market ve Sağlık alanında yapılan her 10.000 🪙 harcamaya ayda bir kez <b>2.000 🪙 Hibe</b> verir. Mezun olursanız "Üst Düzey Yönetici" olmak için CV atarsınız lakin unutmayın; <b>Adada maksimum sadece ve sadece 17 Müdür Koltuğu Bulunur.</b> Seçim yapıldıktan sonra <b>Her 2 yılda bir tamamı yenilenir</b> ve koltuğunuz düşer!</p>
+            <h3 style="color:var(--clr-primary); margin-top:15px;">3. Kariyer, Üniversite ve Akademik Kota</h3>
+            <p>Eğer sistemin kölesi olmak istemiyorsanız Üniversiteye yazılırsınız. <b>Öğrenciyken Market, Eğlence ve Psikiyatri Kliniği (%30) harcamaları Devlet İndirimlidir.</b> Ayrıca enflasyona karşı devlet; Market ve Sağlık alanında yapılan her 10.000 🪙 harcamaya ayda bir kez <b>2.000 🪙 Hibe</b> verir. Üniversitede okurken aylık 4.000 🪙 burs alırsınız lakin mezuniyete ilerleyebilmek ve tam burs alabilmek için her ay en az <b>30 Akademik Görev (Ödev/Proje)</b> tamamlamalısınız. Eksik kalan her ödev için burstan <b>200 🪙 kesilir</b> ve 30 görev barajının altında kalırsanız o ayki eğitim geçersiz sayılarak <b>okul 1 ay uzar!</b> Mezuniyeti 30. aya kadar tamamlayıp diploma alamazsanız devlet işlerinden (memuriyet) atılırsınız. Ders çalışmak <b>Zihinsel Yorgunluk</b> yaratır (her görev -2 Moral, -0.5 Can eksiltir). Her çeyreğin son haftasında (3, 6, 9, 12. ayların 22-30. günleri) **Vize ve Final Sınavı** haftası başlar; bu haftalarda gelen ders görevleri SINAV'a dönüşür ve zor ekonomi/iktisat mini oyunlarıyla test edilirsiniz. Mezun olursanız "Üst Düzey Yönetici" olmak için CV atarsınız lakin unutmayın; <b>Adada maksimum sadece ve sadece 17 Müdür Koltuğu Bulunur.</b> Seçim yapıldıktan sonra <b>Her 2 yılda bir tamamı yenilenir</b> ve koltuğunuz düşer!</p>
 
             <h3 style="color:var(--clr-primary); margin-top:15px;">4. Sosyal Ağ, Eğlence Mekanları ve Arkadaşlar</h3>
             <p>Şehir Meydanında (Örn: Ada Ofis, Kafe, Fırın) vakit geçirmek sadece cüzdanı yormaz, zihninizi (Moral = 0 olursa: 5.000 Terapi Cezası kesilir) iyileştirir! Gittiğiniz mekanlarda yan masada oturan diğer lobi vatandaşlarına '➕ İstek At'abilir ve listeye düştüklerinde özel (Ada Sosyal) uygulamasıyla yazışabilirsiniz. Yeni mesajlar geldiğinde <b>Mesajlar Kutusu otomatik olarak aktif sohbete odaklanır.</b> İşçisi olduğunuz mekana gittiğinizde adisyonunuz <b>%40 Personel İndirimli</b> yazar! <b>ÖNEMLİ KURAL: Diğer müşterilere arkadaşlık isteği atabilmek için O MASAYA OTURUP HARCAMA YAPMANIZ (Sosyalleşmeniz) ZORUNLUDUR. Bedavaya sosyalleşemezsiniz.</b> Ayrıca Zenginler Kulübü tablosundan rakiplerinizi görebilirsiniz.</p>
@@ -421,14 +421,26 @@
     <!-- ÜNİVERSİTE -->
     <div id="modal-uni" class="modal"><div class="modal-content glass-card"><span class="close-btn" onclick="closeModal('modal-uni')">&times;</span>
         <h2>🎓 Üniversite Merkezi</h2>
-        <div id="uni-content">
+        <div class="modal-tabs" style="margin-bottom:15px; display:flex; gap:10px;">
+            <button class="tab-btn active" onclick="switchTab(this, 'uni-info')">Genel Bilgi</button>
+            <button class="tab-btn" id="tab-uni-academic" onclick="switchTab(this, 'uni-academic')" style="display:none;">Derslerim / Sınavlarım</button>
+        </div>
+        
+        <div class="tab-content active" id="uni-info">
             <p>Devlet işinden atılmamak için 30. aya kadar (2.5 Yıl) Diploma almalısın. Okul ücretsizdir, ancak 1 Sınıf 12 ay sürer. Mezuniyet diplomasını teslim almak 50.000 🪙 tutar.</p>
-            <button class="btn-secondary" id="btn-study-uni">Ücretsiz Kaydol (Aylık Part-Time Çalışırken Burs Alırsın)</button>
-            <button class="btn-primary" id="btn-buy-diploma" style="margin-top:10px; display:none;">Diplomayı Teslim Al (-50.000 🪙)</button>
+            <button class="btn-secondary" id="btn-study-uni" style="width:100%; margin-bottom:10px;">Ücretsiz Kaydol (Aylık Part-Time Çalışırken Burs Alırsın)</button>
+            <button class="btn-primary" id="btn-buy-diploma" style="margin-top:10px; width:100%; display:none; margin-bottom:10px;">Diplomayı Teslim Al (-50.000 🪙)</button>
             <button class="btn-primary" id="btn-deposit-burs" style="margin-top:10px; width:100%; background:var(--clr-success); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);" onclick="depositBurs()">🎓 Öğrencilere Burs Yatır</button>
-
+            
+            <h3 style="margin-top:20px; font-size:1.1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">📚 Şu An Üniversite Okuyanlar</h3>
+            <div id="uni-students-list" style="margin-top:10px; font-size:0.9rem; color:var(--clr-text-muted); max-height:150px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;">
+                Yükleniyor...
+            </div>
+        </div>
+        
+        <div class="tab-content" id="uni-academic">
             <!-- Derslerim / Sınavlarım Bölümü -->
-            <div id="academic-section" style="display:none; margin-top:20px; background:rgba(255,255,255,0.02); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+            <div id="academic-section">
                 <h3 style="font-size:1.1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; display:flex; justify-content:space-between; align-items:center; margin-top:0;">
                     <span>📚 Derslerim / Sınavlarım</span>
                     <span id="academic-badge" style="font-size:0.75rem; background:var(--clr-primary); color:white; padding:4px 10px; border-radius:12px; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">Normal Hafta</span>
@@ -445,11 +457,6 @@
                 <div id="academic-tasks-list" style="display:flex; flex-direction:column; gap:8px;">
                     <i style="color:var(--clr-text-muted); font-size:0.95rem;">Bugünkü ders görevleri hazırlanıyor...</i>
                 </div>
-            </div>
-            
-            <h3 style="margin-top:20px; font-size:1.1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">📚 Şu An Üniversite Okuyanlar</h3>
-            <div id="uni-students-list" style="margin-top:10px; font-size:0.9rem; color:var(--clr-text-muted); max-height:150px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;">
-                Yükleniyor...
             </div>
         </div>
     </div></div>
