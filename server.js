@@ -828,6 +828,28 @@ io.on('connection', (socket) => {
         io.emit('global_news_sync', db['SERVER_NEWS']);
     });
 
+    // Bülten Mesajı Silme (Yalnızca Yönetici)
+    socket.on('delete_global_news', (data) => {
+        if (!players[socket.id]) return;
+        let isAdmin = players[socket.id] && players[socket.id].isAdmin;
+
+        if (!isAdmin) {
+            socket.emit('admin_error', { msg: 'Bu işlem için yetkiniz bulunmamaktadır.' });
+            return;
+        }
+
+        let index = parseInt(data.index);
+        if (!db['SERVER_NEWS'] || isNaN(index) || index < 0 || index >= db['SERVER_NEWS'].length) {
+            return;
+        }
+
+        db['SERVER_NEWS'].splice(index, 1);
+        saveDatabaseKey('SERVER_NEWS', db['SERVER_NEWS']);
+
+        io.emit('global_news_sync', db['SERVER_NEWS']);
+        io.emit('broadcast_notification', { msg: 'Bir bülten mesajı yönetici tarafından silindi.', type: 'info' });
+    });
+
     // --- CV BAŞVURU SİSTEMİ ---
     socket.on('submit_cv', (data) => {
         if (!players[socket.id]) return;

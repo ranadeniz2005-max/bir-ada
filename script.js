@@ -576,8 +576,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!newsList || newsList.length === 0) {
                     ticker.innerHTML = defaultHtml;
                 } else {
-                    let newsHtml = newsList.map(n => {
-                        return `<span style="display:inline-block; background:rgba(167, 139, 250, 0.12); border:1px solid rgba(167, 139, 250, 0.25); padding:4px 12px; border-radius:20px; margin-right:20px; font-size:0.85rem; color:#f8fafc;"><strong style="color:#c084fc;">[${n.sender}]</strong>: ${n.msg}</span>`;
+                    let newsHtml = newsList.map((n, idx) => {
+                        let deleteBtn = gameState.isAdmin 
+                            ? `<span style="color:#ef4444; cursor:pointer; margin-left:6px; font-weight:bold;" onclick="deleteGlobalNews(${idx})">🗑️</span>` 
+                            : "";
+                        return `<span style="display:inline-block; background:rgba(167, 139, 250, 0.12); border:1px solid rgba(167, 139, 250, 0.25); padding:4px 12px; border-radius:20px; margin-right:20px; font-size:0.85rem; color:#f8fafc;"><strong style="color:#c084fc;">[${n.sender}]</strong>: ${n.msg}${deleteBtn}</span>`;
                     }).join('');
                     ticker.innerHTML = defaultHtml + newsHtml;
                 }
@@ -3721,6 +3724,16 @@ window.publishGlobalNews = function() {
         window.socket.emit('send_global_news', { message: msg.trim() });
     } else {
         notify("Sunucu bağlantısı yok.", "error");
+    }
+};
+
+window.deleteGlobalNews = function(index) {
+    if (confirm("Bu bülten mesajını silmek istediğinize emin misiniz?")) {
+        if (window.socket) {
+            window.socket.emit('delete_global_news', { index: index });
+        } else {
+            notify("Sunucu bağlantısı yok.", "error");
+        }
     }
 };
 
