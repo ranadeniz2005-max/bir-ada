@@ -330,10 +330,11 @@
             <div id="active-deposits-list" style="margin-top:15px; font-size:0.9rem; max-height:120px; overflow-y:auto; color:var(--clr-success);">Mevduatınız Bulunmamaktadır.</div>
         </div>
         <div class="tab-content" id="bank-transfer">
-            <p style="font-size:0.8rem; color:var(--clr-text-muted);">Diğer oyunculara P2P Transfer ve Borç gönderimi. İban veya Kullanıcı Adı yazarak gönderin.</p>
-            <div class="form-group" style="margin-top:15px;">
-                <input type="text" id="loan-receiver" placeholder="Alıcı Kullanıcı Adı" style="margin-bottom:10px; width:100%;">
-                <div style="display:flex; gap:10px;">
+            <h3 style="font-size:1rem; color:var(--clr-primary); margin-bottom:8px;">💸 Para Gönder (Hediye veya İstek Üzerine Borç)</h3>
+            <p style="font-size:0.8rem; color:var(--clr-text-muted);">Karşı tarafa vadesiz (hediye) veya aktif borç talebi varsa vadeli borç gönderebilirsiniz.</p>
+            <div class="form-group" style="margin-top:10px; flex-direction:column; gap:5px;">
+                <input type="text" id="loan-receiver" placeholder="Alıcı Kullanıcı Adı" style="width:100%; margin-bottom:5px;">
+                <div style="display:flex; gap:10px; margin-top:5px;">
                     <input type="number" id="p2p-loan-amount" placeholder="Miktar" style="flex:1;">
                     <select id="p2p-loan-term" style="padding:10px; border-radius:5px; background:rgba(255,255,255,0.1); color:white; border:none; outline:none;">
                         <option value="0" style="color:black;">Vadesiz (Karşılıksız Hediye)</option>
@@ -344,6 +345,24 @@
             </div>
             <button class="btn-primary" id="btn-lend-money" style="width:100%; margin-top:10px;">Transfer Emir Gönder</button>
             
+            <hr style="opacity:0.15; margin:15px 0;">
+            
+            <h3 style="font-size:1rem; color:#a78bfa; margin-bottom:8px;">🤝 Borç Talep Et</h3>
+            <p style="font-size:0.8rem; color:var(--clr-text-muted);">Diğer oyunculardan vadeli borç para talep edin. Borç gönderimi için talep şarttır.</p>
+            <div class="form-group" style="margin-top:10px; flex-direction:column; gap:5px;">
+                <input type="text" id="debt-request-target" placeholder="Borç İstenecek Oyuncu" style="width:100%; margin-bottom:5px;">
+                <div style="display:flex; gap:10px; margin-top:5px;">
+                    <input type="number" id="debt-request-amount" placeholder="Miktar" style="flex:1;">
+                    <select id="debt-request-term" style="padding:10px; border-radius:5px; background:rgba(255,255,255,0.1); color:white; border:none; outline:none;">
+                        <option value="1" style="color:black;">1 Ay Vade</option>
+                        <option value="3" style="color:black;">3 Ay Vade</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn-primary" style="width:100%; margin-top:10px; background:linear-gradient(135deg, #8b5cf6, #d946ef);" onclick="requestDebt()">Borç Talep Et</button>
+
+            <hr style="opacity:0.15; margin:15px 0;">
+
             <div id="active-debts" style="margin-top:15px; font-size:0.9rem; background:rgba(0,0,0,0.3); padding:10px; border-radius:10px;">Gönderilmiş aktif borcunuz yok.</div>
         </div>
     </div></div>
@@ -407,6 +426,26 @@
             <button class="btn-secondary" id="btn-study-uni">Ücretsiz Kaydol (Aylık Part-Time Çalışırken Burs Alırsın)</button>
             <button class="btn-primary" id="btn-buy-diploma" style="margin-top:10px; display:none;">Diplomayı Teslim Al (-50.000 🪙)</button>
             <button class="btn-primary" id="btn-deposit-burs" style="margin-top:10px; width:100%; background:var(--clr-success); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);" onclick="depositBurs()">🎓 Öğrencilere Burs Yatır</button>
+
+            <!-- Derslerim / Sınavlarım Bölümü -->
+            <div id="academic-section" style="display:none; margin-top:20px; background:rgba(255,255,255,0.02); padding:15px; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+                <h3 style="font-size:1.1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px; display:flex; justify-content:space-between; align-items:center; margin-top:0;">
+                    <span>📚 Derslerim / Sınavlarım</span>
+                    <span id="academic-badge" style="font-size:0.75rem; background:var(--clr-primary); color:white; padding:4px 10px; border-radius:12px; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">Normal Hafta</span>
+                </h3>
+                <div style="margin:12px 0; background:rgba(0,0,0,0.2); padding:12px; border-radius:8px; font-size:0.9rem; line-height:1.4;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-weight:bold;">
+                        <span>Akademik Aylık Kota:</span>
+                        <span style="color:var(--clr-warning);"><span id="academic-completed-tasks">0</span> / 30 Görev</span>
+                    </div>
+                    <div style="font-size:0.75rem; color:var(--clr-text-muted); margin-top:6px;">
+                        ⚠️ Kota eksik kalırsa her ödev için <strong>-200 🪙</strong> burs kesintisi yapılır ve eğitiminiz <strong>1 ay uzar!</strong>
+                    </div>
+                </div>
+                <div id="academic-tasks-list" style="display:flex; flex-direction:column; gap:8px;">
+                    <i style="color:var(--clr-text-muted); font-size:0.95rem;">Bugünkü ders görevleri hazırlanıyor...</i>
+                </div>
+            </div>
             
             <h3 style="margin-top:20px; font-size:1.1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">📚 Şu An Üniversite Okuyanlar</h3>
             <div id="uni-students-list" style="margin-top:10px; font-size:0.9rem; color:var(--clr-text-muted); max-height:150px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;">

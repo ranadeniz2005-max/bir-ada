@@ -219,6 +219,7 @@ io.on('connection', (socket) => {
             clientState.notificationHistory = serverState.notificationHistory || [];
             clientState.unreadNotifications = serverState.unreadNotifications || 0;
             clientState.lawsuits = serverState.lawsuits || [];
+            clientState.debtRequests = serverState.debtRequests || [];
 
             saveDatabaseKey(username, clientState);
         }
@@ -253,12 +254,25 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Parayı transfer et
-        db[sender].balance -= amount;
-        db[receiver].balance += amount;
-
-        // Vade varsa borç olarak kaydet
+        // Vade varsa borç olarak kaydet (Önceden borç isteği şartı kontrol edilir)
         if (term > 0) {
+            let hasRequest = false;
+            let reqIndex = -1;
+            if (db[sender].debtRequests) {
+                reqIndex = db[sender].debtRequests.findIndex(r => r.sender === receiver && r.amount === amount && r.term === term);
+                if (reqIndex > -1) {
+                    hasRequest = true;
+                }
+            }
+
+            if (!hasRequest) {
+                socket.emit('p2p_transfer_response', { success: false, msg: 'Hata: Alıcının sizden bu miktarda ve vadede aktif bir borç talebi bulunmamaktadır!' });
+                return;
+            }
+
+            // Talebi kaldır
+            db[sender].debtRequests.splice(reqIndex, 1);
+
             if (!db[sender].debtsGiven) db[sender].debtsGiven = [];
             if (!db[receiver].debtsTaken) db[receiver].debtsTaken = [];
 
@@ -266,11 +280,15 @@ io.on('connection', (socket) => {
             db[receiver].debtsTaken.push({ creditor: sender, amount: amount, term: term, startYear: data.year, startMonth: data.month });
         }
 
+        // Parayı transfer et
+        db[sender].balance -= amount;
+        db[receiver].balance += amount;
+
         // Veritabanını güncelle
         saveDatabaseKeys([sender, receiver]);
 
         // Göndericiye başarılı yanıtını dön
-        socket.emit('p2p_transfer_response', { success: true, msg: `${receiver} adlı oyuncuya ${amount} 🪙 gönderildi.`, amount: amount, debtsGiven: db[sender].debtsGiven });
+        socket.emit('p2p_transfer_response', { success: true, msg: `${receiver} adlı oyuncuya ${amount} 🪙 gönderildi.`, amount: amount, debtsGiven: db[sender].debtsGiven, debtRequests: db[sender].debtRequests });
 
         // Sunucu tarafı kalıcı bildirimler
         let transferMsg = term > 0 
@@ -287,6 +305,88 @@ io.on('connection', (socket) => {
             }
         }
         console.log(`[💸 TRANSFER] ${sender} -> ${receiver} : ${amount} 🪙`);
+    });
+
+    // P2P Borç Talebi Gönderme
+    socket.on('request_debt', (data) => {
+        if (!players[socket.id]) return;
+        let debtor = players[socket.id].username; // X
+        let creditor = data.target; // Y
+        let amount = parseInt(data.amount);
+        let term = parseInt(data.term);
+
+        if (isNaN(amount) || amount <= 0 || isNaN(term) || term <= 0) {
+            socket.emit('request_debt_response', { success: false, msg: 'Geçersiz talep parametreleri.' });
+            return;
+        }
+
+        if (debtor === creditor) {
+            socket.emit('request_debt_response', { success: false, msg: 'Kendinizden borç talep edemezsiniz.' });
+            return;
+        }
+
+        if (!db[creditor]) {
+            socket.emit('request_debt_response', { success: false, msg: 'Borç istenecek oyuncu bulunamadı. Kullanıcı adını tam yazın.' });
+            return;
+        }
+
+        // Alıcının (Y) debtRequests listesini başlat
+        if (!db[creditor].debtRequests) db[creditor].debtRequests = [];
+
+        // Zaten aynı talep var mı?
+        let exists = db[creditor].debtRequests.some(r => r.sender === debtor && r.amount === amount && r.term === term);
+        if (exists) {
+            socket.emit('request_debt_response', { success: false, msg: 'Bu oyuncuya zaten aynı miktarda ve vadede bekleyen bir borç talebiniz var.' });
+            return;
+        }
+
+        let requestId = Math.random().toString(36).substr(2, 9);
+        db[creditor].debtRequests.push({
+            id: requestId,
+            sender: debtor,
+            amount: amount,
+            term: term,
+            date: new Date().toISOString()
+        });
+
+        saveDatabaseKey(creditor, db[creditor]);
+
+        socket.emit('request_debt_response', { success: true, msg: `${creditor} kişisinden ${amount} 🪙 borç talebiniz iletildi.` });
+
+        // Bildirim ekle
+        addNotification(creditor, `${debtor} sizden ${term} ay vadeli ${amount} 🪙 borç talep etti!`, 'info');
+
+        // Alıcı online ise istek listesini canlı güncelle
+        for (let id in players) {
+            if (players[id].username === creditor) {
+                io.to(id).emit('debt_request_sync', { debtRequests: db[creditor].debtRequests || [] });
+                break;
+            }
+        }
+    });
+
+    // P2P Borç Talebi Reddetme
+    socket.on('reject_debt_request', (data) => {
+        if (!players[socket.id]) return;
+        let username = players[socket.id].username; // Y
+        let requestId = data.id;
+
+        if (db[username] && db[username].debtRequests) {
+            let index = db[username].debtRequests.findIndex(r => r.id === requestId);
+            if (index > -1) {
+                let req = db[username].debtRequests[index];
+                db[username].debtRequests.splice(index, 1);
+                saveDatabaseKey(username, db[username]);
+
+                socket.emit('reject_debt_request_response', { success: true, id: requestId, msg: 'Borç talebi reddedildi.' });
+                
+                // Borç isteyene bildirim ekle
+                addNotification(req.sender, `${username} borç talebinizi reddetti.`, 'error');
+
+                // Kendimize güncel listeyi gönderelim
+                socket.emit('debt_request_sync', { debtRequests: db[username].debtRequests || [] });
+            }
+        }
     });
 
     // Online Oyuncuları İstemciye Gönderme

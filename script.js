@@ -28,6 +28,8 @@ const gameState = {
     joblessMonths: 0,
     jobSkill: 0,         // Mesleki Yetenek (Sertifika Puanı)
     activeOrders: [],    // Günlük Vardiya Kriz/Sipariş Dizisi
+    monthlyCompletedAcademicTasks: 0, // Aylık tamamlanan akademik görev sayısı
+    activeAcademicTasks: [],         // Günlük üniversite ödev/proje/sınav görevleri dizisi
     careerHistory: [],   // İş Geçmişi / Özgeçmiş Listesi
     jobApplications: [], // Admin paneline düşen CV başvuruları
     jobApplicationCooldown: 0, // Reddedilirse 2 ay bekleme süresi
@@ -61,6 +63,7 @@ const gameState = {
     debtsGiven: [],
     debtsTaken: [],
     lawsuits: [],
+    debtRequests: [],
     notificationHistory: [],
     unreadNotifications: 0,
     bankBlocked: false,
@@ -141,6 +144,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (pendingSavedState !== "NEW_PLAYER") {
                     let oldTotalPhases = pendingSavedState.time ? pendingSavedState.time.totalPhases : 0;
                     Object.assign(gameState, pendingSavedState);
+                    if(gameState.monthlyCompletedAcademicTasks === undefined) gameState.monthlyCompletedAcademicTasks = 0;
+                    if(!gameState.activeAcademicTasks) gameState.activeAcademicTasks = [];
                     notify("Kayıtlı oyununuz sunucudan başarıyla yüklendi!", "success");
                     
                     let currentTarget = pendingServerTime.totalPhases;
@@ -409,6 +414,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => {
                     if (window.socket) window.socket.emit('get_admin_player_data');
                 }, 500);
+            } else {
+                notify(data.msg, "error");
+            }
+        });
+
+        window.socket.on('incoming_debt_request', (data) => {
+            notify(`[Banka] ${data.sender} sizden ${data.term} ay vadeli ${data.amount} 🪙 borç talep etti!`, "info");
+        });
+
+        window.socket.on('debt_request_sync', (data) => {
+            if (data.debtRequests !== undefined) {
+                gameState.debtRequests = data.debtRequests;
+                if (typeof renderLawsuit === 'function') renderLawsuit();
+            }
+        });
+
+        window.socket.on('request_debt_response', (data) => {
+            if (data.success) {
+                notify(data.msg, "success");
+            } else {
+                notify(data.msg, "error");
+            }
+        });
+
+        window.socket.on('reject_debt_request_response', (data) => {
+            if (data.success) {
+                notify(data.msg, "success");
+                if (data.id) {
+                    gameState.debtRequests = (gameState.debtRequests || []).filter(r => r.id !== data.id);
+                    if (typeof renderLawsuit === 'function') renderLawsuit();
+                }
             } else {
                 notify(data.msg, "error");
             }
@@ -769,6 +805,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-study-uni').onclick = () => { 
         if(!gameState.hasDiploma && !gameState.isStudent) { 
             gameState.isStudent = true; 
+            gameState.monthlyCompletedAcademicTasks = 0;
+            gameState.activeAcademicTasks = [];
+            generateDailyAcademicTasks();
             notify("Okula kaydoldun. Temsili 2 yıl sürecek. Öğrenciyken Sadece Part-Time çalışabilirsin."); 
             updateUI(); 
         } 
@@ -779,6 +818,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if(systemSpend(50000, 'Diploma Mezuniyet Harcı')) { 
                 gameState.hasDiploma = true; 
                 gameState.isStudent = false; 
+                gameState.activeAcademicTasks = [];
+                gameState.monthlyCompletedAcademicTasks = 0;
                 notify("Tebrikler 2 Yılı Tamamladın ve 50.000🪙 ödeyip Diplomanı Aldın!"); 
                 updateUI(); 
             }
@@ -926,6 +967,7 @@ function syncTimePhase(serverTime) {
 
     if(dayChanged) {
         generateDailyOrders();
+        generateDailyAcademicTasks();
         
         if(gameState.checkupMonths >= 3) {
             gameState.survival.health -= 1; // Check-up ihmali hastalığı
@@ -1033,9 +1075,15 @@ function onNewMonth() {
 
     // Üniversite Eğitimi
     if(gameState.isStudent && !gameState.hasDiploma) {
-        gameState.universityMonths++;
-        if(gameState.universityMonths === 24) {
-            notify("Üniversite eğitimini tamamladın! Diplomayı 50.000 🪙 karşılığında Üniversite binasından alabilirsin.", "success");
+        if (!gameState.monthlyCompletedAcademicTasks) gameState.monthlyCompletedAcademicTasks = 0;
+        if (gameState.monthlyCompletedAcademicTasks >= 30) {
+            gameState.universityMonths++;
+            notify(`Bu ayki akademik kotayı (${gameState.monthlyCompletedAcademicTasks}/30 Görev) başarıyla tamamladınız! Üniversite eğitiminiz ilerledi: (${gameState.universityMonths}/24 Ay)`, "success");
+            if(gameState.universityMonths === 24) {
+                notify("Üniversite eğitimini tamamladın! Diplomayı 50.000 🪙 karşılığında Üniversite binasından alabilirsin.", "success");
+            }
+        } else {
+            notify(`Aylık akademik kotayı dolduramadınız (${gameState.monthlyCompletedAcademicTasks}/30 Görev)! Bu ayki eğitiminiz geçersiz sayıldı ve okulunuz 1 ay uzadı.`, "error");
         }
     }
 
@@ -1121,6 +1169,134 @@ function onNewMonth() {
     updateUI();
 }
 
+function getAcademicWeekStatus() {
+    if (!gameState.isStudent || gameState.hasDiploma) return null;
+    let month = gameState.time.month;
+    let day = gameState.time.day;
+    let isExamWeek = (day >= 22 && day <= 30) && (month === 3 || month === 6 || month === 9 || month === 12);
+    
+    if (isExamWeek) {
+        if (month === 3) return { type: 'vize', label: '1. Dönem Vize Haftası', title: '1. Dönem Vize' };
+        if (month === 6) return { type: 'final', label: '1. Dönem Final Haftası', title: '1. Dönem Final' };
+        if (month === 9) return { type: 'vize', label: '2. Dönem Vize Haftası', title: '2. Dönem Vize' };
+        if (month === 12) return { type: 'final', label: '2. Dönem Final Haftası', title: '2. Dönem Final' };
+    }
+    return null;
+}
+
+function generateDailyAcademicTasks() {
+    if (!gameState.isStudent || gameState.hasDiploma) {
+        gameState.activeAcademicTasks = [];
+        return;
+    }
+    
+    if (!gameState.activeAcademicTasks) gameState.activeAcademicTasks = [];
+    
+    let examStatus = getAcademicWeekStatus();
+    let targetCount = 3; // Her zaman 3 ders görevi/sınavı aktif bulunsun
+    
+    let namesRoutine = [
+        "Ödev: Mikroekonomi Analizi",
+        "Proje: Ekonometrik Modelleme",
+        "Ödev: Finansal Raporlama",
+        "Ödev: Para Teorisi ve Politikası",
+        "Proje: Arz-Talep Grafiği Çizimi",
+        "Ödev: Enflasyon Tahmini",
+        "Proje: Portföy Optimizasyonu",
+        "Ödev: Kamu Maliyesi Analizi",
+        "Ödev: Uluslararası İktisat Teorisi",
+        "Ödev: Merkez Bankası Kararları",
+        "Proje: Oyun Teorisi Analizi",
+        "Ödev: Davranışsal İktisat"
+    ];
+    
+    let namesExam = [];
+    if (examStatus) {
+        if (examStatus.type === 'vize') {
+            namesExam = [
+                "SINAV: Mikroiktisat Vizesi",
+                "SINAV: Makroiktisat Vizesi",
+                "SINAV: İktisadi Düşünceler Tarihi Vizesi",
+                "SINAV: Para ve Banka Vizesi"
+            ];
+        } else {
+            namesExam = [
+                "SINAV: Mikroiktisat Finali",
+                "SINAV: Makroiktisat Finali",
+                "SINAV: Ekonometri Finali",
+                "SINAV: Finansal İktisat Finali"
+            ];
+        }
+    }
+    
+    // Aktif sınav haftasına girildiyse eski ödevleri, sınav haftası bittiyse eski sınavları temizle
+    gameState.activeAcademicTasks = gameState.activeAcademicTasks.filter(t => {
+        let isTaskExam = t.isExam;
+        let shouldBeExam = !!examStatus;
+        return isTaskExam === shouldBeExam;
+    });
+    
+    // Sayıyı her zaman targetCount (3) seviyesinde tut
+    while (gameState.activeAcademicTasks.length < targetCount) {
+        let title = examStatus ? namesExam[Math.floor(Math.random() * namesExam.length)] : namesRoutine[Math.floor(Math.random() * namesRoutine.length)];
+        let gameTypes = ['supply_demand', 'inflation_fight', 'budget_balance', 'opportunity_cost'];
+        let gameType = gameTypes[Math.floor(Math.random() * gameTypes.length)];
+        
+        gameState.activeAcademicTasks.push({
+            id: 'acad-' + Math.random().toString(36).substr(2, 9),
+            title: title,
+            isExam: !!examStatus,
+            examType: examStatus ? examStatus.type : null,
+            gameType: gameType
+        });
+    }
+    
+    if (typeof renderAcademicTasks === 'function') renderAcademicTasks();
+}
+
+function renderAcademicTasks() {
+    const list = document.getElementById('academic-tasks-list');
+    if(!list) return;
+
+    if(!gameState.isStudent || gameState.hasDiploma) {
+        list.innerHTML = '';
+        return;
+    }
+
+    if(!gameState.activeAcademicTasks || gameState.activeAcademicTasks.length === 0) {
+        list.innerHTML = `<i style="color:var(--clr-text-muted); font-size:0.95rem;">Bugün için bekleyen ders ödevi veya sınavınız yok. Yarın yenileri yüklenecek.</i>`;
+        return;
+    }
+
+    let html = '';
+    gameState.activeAcademicTasks.forEach(t => {
+        let isExam = t.isExam;
+        let cardColor = isExam ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.1)';
+        let borderClr = isExam ? '#ef4444' : '#10b981';
+        let label = isExam ? 'Dönem Sonu Sınav Görevi' : 'Ders Çalışma / Ödev';
+        
+        let examLabel = isExam ? `<span style="color:var(--clr-danger); font-weight:bold;">[SINAV]</span>` : '';
+        
+        let typeInfo = '';
+        if (t.gameType === 'supply_demand') typeInfo = 'Ekonomi: Arz-Talep Dengesi';
+        else if (t.gameType === 'inflation_fight') typeInfo = 'Ekonomi: Enflasyonla Mücadele';
+        else if (t.gameType === 'budget_balance') typeInfo = 'Ekonomi: Kamu Bütçesi Planlama';
+        else if (t.gameType === 'opportunity_cost') typeInfo = 'Ekonomi: Fırsat Maliyeti Optimizasyonu';
+        
+        html += `
+        <div style="background:${cardColor}; border-left:4px solid ${borderClr}; padding:12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 8px;">
+            <div>
+                <div style="font-size:0.75rem; color:${borderClr}; font-weight:bold; text-transform:uppercase; letter-spacing:0.5px;">${label}</div>
+                <strong style="font-size:0.95rem; display:block; margin:2px 0;">${examLabel} ${t.title}</strong>
+                <div style="font-size:0.8rem; opacity:0.8; color:var(--clr-text-muted);">${typeInfo}</div>
+            </div>
+            <button class="${isExam ? 'btn-danger' : 'btn-primary'}" onclick="startAcademicMinigame('${t.id}')" style="padding: 8px 16px; font-size: 0.85rem; height: auto;">${isExam ? 'Sınava Gir' : 'Ders Çalış'}</button>
+        </div>
+        `;
+    });
+    list.innerHTML = html;
+}
+
 function generateDailyOrders() {
     // Aktif bir işte çalışıyorsa günlük vardiya görevleri gelsin
     if(gameState.jobType !== null) {
@@ -1183,13 +1359,45 @@ function processSalariesAndTaxes() {
 
     if(!gameState.jobType && gameState.businesses.length === 0) {
         if(gameState.joblessMonths < 3) { income = 13000; desc = "İşsizlik Maaşı"; gameState.joblessMonths++; }
+        
+        if(gameState.isStudent) {
+            if (!gameState.monthlyCompletedAcademicTasks) gameState.monthlyCompletedAcademicTasks = 0;
+            let missingAcademic = 30 - gameState.monthlyCompletedAcademicTasks;
+            let bursaryEarned = 4000;
+            if (missingAcademic > 0) {
+                let penalty = missingAcademic * 200;
+                bursaryEarned = Math.max(0, 4000 - penalty);
+                desc += ` + Burs (${bursaryEarned} 🪙, -${penalty} Eksik Görev Cezası)`;
+                notify(`Aylık 30 Akademik Görev kotanızı dolduramadınız! Eksik ${missingAcademic} görev için bursunuzdan ${penalty} 🪙 kesildi.`, 'error');
+            } else {
+                desc += " + Burs (4000 🪙)";
+                notify(`Tebrikler! Aylık 30 Akademik Görev kotanızı doldurdunuz ve tam burs aldınız!`, 'success');
+            }
+            income += bursaryEarned;
+        }
     } else {
         gameState.joblessMonths = 0; // Reset unemployment counter while employed
         if(gameState.jobType && gameState.jobType.startsWith('asgari')) { income = 28000; taxRate = 0.10; desc = "Memur Maaşı"; }
         if(gameState.jobType === 'part-time') { income = 14000; taxRate = 0.10; desc = "Öğrenci Part-Time"; }
         if(gameState.jobType === 'high-level') { income = 60000; taxRate = 0.25; desc = "Üst Düzey Yönetici"; }
 
-        if(gameState.isStudent) { income += 4000; desc += " + Burs"; taxRate = 0; } // ÖĞRENCİDEN VERGİ ALINMAZ
+        if(gameState.isStudent) {
+            if (!gameState.monthlyCompletedAcademicTasks) gameState.monthlyCompletedAcademicTasks = 0;
+            let missingAcademic = 30 - gameState.monthlyCompletedAcademicTasks;
+            let bursaryEarned = 4000;
+            if (missingAcademic > 0) {
+                let penalty = missingAcademic * 200;
+                bursaryEarned = Math.max(0, 4000 - penalty);
+                desc += ` + Burs (${bursaryEarned} 🪙, -${penalty} Eksik Görev Cezası)`;
+                notify(`Aylık 30 Akademik Görev kotanızı dolduramadınız! Eksik ${missingAcademic} görev için bursunuzdan ${penalty} 🪙 kesildi.`, 'error');
+            } else {
+                bursaryEarned = 4000;
+                desc += " + Burs (4000 🪙)";
+                notify(`Tebrikler! Aylık 30 Akademik Görev kotanızı doldurdunuz ve tam burs aldınız!`, 'success');
+            }
+            income += bursaryEarned;
+            taxRate = 0; // ÖĞRENCİDEN VERGİ ALINMAZ
+        }
         if(gameState.employedMonths < 5) { income += 5000; desc += " + Teşvik"; }
         
         // AYLIK MAAŞ KESİNTİSİ (Aylık 50 görev kotası)
@@ -1211,6 +1419,7 @@ function processSalariesAndTaxes() {
         }
         
         gameState.monthlyCompletedTasks = 0; // Her ay sonu kotayı sıfırla
+        gameState.monthlyCompletedAcademicTasks = 0; // Her ay sonu akademik kotayı sıfırla
         gameState.salaryDeductions = 0;
     }
 
@@ -1508,6 +1717,27 @@ function renderLawsuit() {
     
     list.innerHTML = '';
     
+    // Gelen Borç Talepleri
+    let requestsHtml = '<div style="margin-bottom:15px;"><h4 style="color:#a78bfa; margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:4px; font-size:0.85rem;">Bana Gelen Borç Talepleri</h4>';
+    if (!gameState.debtRequests || gameState.debtRequests.length === 0) {
+        requestsHtml += '<div style="color:var(--clr-text-muted); font-size:0.8rem; padding:5px 0;">Gelen aktif borç talebi yok.</div>';
+    } else {
+        gameState.debtRequests.forEach((req) => {
+            requestsHtml += `<div style="padding:8px; background:rgba(255,255,255,0.02); border-left:3px solid #a78bfa; margin-bottom:5px; border-radius:4px; display:flex; justify-content:space-between; align-items:center; font-size:0.8rem;">
+                <div>
+                    <strong>Kimden:</strong> ${req.sender} <br>
+                    <strong>Miktar:</strong> ${req.amount.toLocaleString('tr-TR')} 🪙 <br>
+                    <strong>Vade:</strong> ${req.term} Ay
+                </div>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn-primary" style="padding:4px 10px; font-size:0.75rem; border-radius:5px; background:var(--clr-success); box-shadow:none;" onclick="acceptDebtRequest('${req.sender}', ${req.amount}, ${req.term})">Borç Ver</button>
+                    <button class="btn-danger" style="padding:4px 10px; font-size:0.75rem; border-radius:5px; box-shadow:none;" onclick="rejectDebtRequest('${req.id}')">Reddet</button>
+                </div>
+            </div>`;
+        });
+    }
+    requestsHtml += '</div>';
+
     // Verdiğim Borçlar (Alacaklarım)
     let givenHtml = '<div style="margin-bottom:15px;"><h4 style="color:var(--clr-success); margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:4px; font-size:0.85rem;">Verdiğim Borçlar (Alacaklarım)</h4>';
     if (!gameState.debtsGiven || gameState.debtsGiven.length === 0) {
@@ -1551,7 +1781,7 @@ function renderLawsuit() {
     }
     takenHtml += '</div>';
 
-    list.innerHTML = givenHtml + takenHtml;
+    list.innerHTML = requestsHtml + givenHtml + takenHtml;
 }
 
 function fileLawsuit() {
@@ -1645,6 +1875,8 @@ function executeBankruptcy(type) {
         gameState.hasDiploma = false;
         gameState.isStudent = false;
         gameState.universityMonths = 0;
+        gameState.activeAcademicTasks = [];
+        gameState.monthlyCompletedAcademicTasks = 0;
         gameState.balance = 0;
         notify("Tüm haklarınız elinizden alındı. Sıfırdan bir hayata başlıyorsunuz...", "error");
     } 
@@ -1765,6 +1997,33 @@ function updateUI() {
         document.getElementById('btn-study-uni').style.display = 'block';
         document.getElementById('btn-study-uni').disabled = false;
         document.getElementById('btn-study-uni').textContent = "Ücretsiz Kaydol (Aylık Part-Time Çalışırken Burs Alırsın)";
+    }
+    
+    // Academic Section Arayüz Güncellemeleri
+    const acadSection = document.getElementById('academic-section');
+    if (acadSection) {
+        if (gameState.isStudent && !gameState.hasDiploma) {
+            acadSection.style.display = 'block';
+            let completedDisp = document.getElementById('academic-completed-tasks');
+            if (completedDisp) completedDisp.textContent = gameState.monthlyCompletedAcademicTasks || 0;
+            
+            let examStatus = getAcademicWeekStatus();
+            let badge = document.getElementById('academic-badge');
+            if (badge) {
+                if (examStatus) {
+                    badge.textContent = examStatus.label;
+                    badge.style.background = 'var(--clr-danger)';
+                    badge.style.boxShadow = '0 0 10px rgba(239, 68, 68, 0.5)';
+                } else {
+                    badge.textContent = 'Normal Hafta';
+                    badge.style.background = 'var(--clr-primary)';
+                    badge.style.boxShadow = 'none';
+                }
+            }
+            if (typeof renderAcademicTasks === 'function') renderAcademicTasks();
+        } else {
+            acadSection.style.display = 'none';
+        }
     }
     
     // Kariyer Geçmişi Render Eklemesi
@@ -2172,6 +2431,419 @@ function renderShiftOrders() {
 let minigameActive = false;
 let currentMGOrder = null;
 
+window.startAcademicMinigame = function(taskId) {
+    let taskIndex = gameState.activeAcademicTasks.findIndex(t => t.id === taskId);
+    if(taskIndex === -1) return;
+    
+    let task = gameState.activeAcademicTasks[taskIndex];
+    currentMGOrder = { ...task, isAcademic: true };
+    minigameActive = true;
+    let gameWon = false;
+    
+    const ui = document.getElementById('minigame-area');
+    document.getElementById('mg-title').textContent = task.isExam ? "Akademik Sınav Veriyorsunuz!" : "Akademik Görev Çalışılıyor...";
+    
+    const container = document.getElementById('mg-dynamic-container');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    ui.style.display = 'flex';
+
+    if(task.gameType === 'supply_demand') {
+        let targetPrice = Math.floor(Math.random() * 50) + 25; // 25-75 arası denge fiyatı
+        let playerPrice = Math.random() > 0.5 ? 10 : 90;
+        let margin = task.isExam ? 1 : 3;
+
+        function getSDValues(price) {
+            let demand = Math.round(Math.max(0, Math.min(100, 100 - (price - targetPrice + 50))));
+            let supply = Math.round(Math.max(0, Math.min(100, price - targetPrice + 50)));
+            return { demand, supply };
+        }
+
+        function updateSDUI() {
+            let vals = getSDValues(playerPrice);
+            document.getElementById('sd-price').textContent = playerPrice + ' 🪙';
+            document.getElementById('sd-demand').textContent = vals.demand + ' adet';
+            document.getElementById('sd-supply').textContent = vals.supply + ' adet';
+            document.getElementById('sd-demand-bar').style.width = vals.demand + '%';
+            document.getElementById('sd-supply-bar').style.width = vals.supply + '%';
+            
+            let hint = '';
+            if (playerPrice > targetPrice + margin) {
+                hint = '<span style="color:#ef4444; font-weight:bold;">⚠️ Fiyat çok yüksek! Talep yetersiz, stok birikiyor.</span>';
+            } else if (playerPrice < targetPrice - margin) {
+                hint = '<span style="color:#ef4444; font-weight:bold;">⚠️ Fiyat çok düşük! Yoğun talep var ancak üretici mal satmıyor.</span>';
+            } else {
+                hint = '<span style="color:#10b981; font-weight:bold;">Piyasa Dengede! (Dengeyi Kur butonuna basabilirsin) ✅</span>';
+            }
+            document.getElementById('sd-hint').innerHTML = hint;
+        }
+
+        container.innerHTML = `
+            <p style="color:white; text-align:center; font-size:0.95rem; margin-bottom:15px; width:100%;">Fiyatı ayarlayarak <strong>Arz (Kırmızı)</strong> ve <strong>Talep (Mavi)</strong> miktarlarını denge fiyatında eşitle!</p>
+            <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:10px; width:100%; margin-bottom:15px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <span>Ürün Fiyatı:</span>
+                    <strong id="sd-price" style="color:var(--clr-warning); font-size:1.2rem;">${playerPrice} 🪙</strong>
+                </div>
+                
+                <div style="margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px;">
+                        <span>📉 Alıcı Talebi:</span>
+                        <span id="sd-demand" style="font-weight:bold;"></span>
+                    </div>
+                    <div style="width:100%; height:15px; background:rgba(255,255,255,0.1); border-radius:8px; overflow:hidden;">
+                        <div id="sd-demand-bar" style="height:100%; background:#3b82f6; width:0%;"></div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px;">
+                        <span>📈 Satıcı Arzı:</span>
+                        <span id="sd-supply" style="font-weight:bold;"></span>
+                    </div>
+                    <div style="width:100%; height:15px; background:rgba(255,255,255,0.1); border-radius:8px; overflow:hidden;">
+                        <div id="sd-supply-bar" style="height:100%; background:#ef4444; width:0%;"></div>
+                    </div>
+                </div>
+                
+                <div id="sd-hint" style="font-size:0.85rem; text-align:center; min-height:20px; margin-top:10px;"></div>
+            </div>
+            
+            <div style="display:flex; gap:15px; width:100%; justify-content:center; margin-bottom:15px;">
+                <button id="sd-btn-down" class="btn-secondary" style="padding:10px 20px; font-size:1.1rem; flex:1;">⬇️ Fiyatı Düşür</button>
+                <button id="sd-btn-up" class="btn-secondary" style="padding:10px 20px; font-size:1.1rem; flex:1;">⬆️ Fiyatı Artır</button>
+            </div>
+            
+            <button id="sd-btn-submit" class="btn-primary" style="width:100%; padding:12px; font-size:1.1rem; background:var(--clr-success);">Dengeyi Kur</button>
+        `;
+        
+        setTimeout(updateSDUI, 50);
+        
+        document.getElementById('sd-btn-down').onclick = function() {
+            if (playerPrice > 1) { playerPrice -= 1; updateSDUI(); }
+        };
+        document.getElementById('sd-btn-up').onclick = function() {
+            if (playerPrice < 150) { playerPrice += 1; updateSDUI(); }
+        };
+        document.getElementById('sd-btn-submit').onclick = function() {
+            if (Math.abs(playerPrice - targetPrice) <= margin) {
+                gameWon = true;
+                this.style.background = 'var(--clr-success)';
+                this.textContent = 'DENGE SAĞLANDI! UYGULANIYOR...';
+                setTimeout(winMinigame, 500);
+            } else {
+                notify("Hatalı Fiyat! Piyasa henüz dengede değil.", "error");
+            }
+        };
+    }
+    else if(task.gameType === 'inflation_fight') {
+        let interestRate = 5.0;
+        let targetMinInf = task.isExam ? 3.5 : 3.0;
+        let targetMaxInf = task.isExam ? 5.5 : 7.0;
+        let maxUnemp = task.isExam ? 8.0 : 10.0;
+
+        function getInflationStats(rate) {
+            let inf = Math.max(1.5, 18.0 - (rate - 5.0) * 1.3);
+            let unemp = Math.max(3.0, 4.0 + (rate - 5.0) * 0.5);
+            return { inf: parseFloat(inf.toFixed(1)), unemp: parseFloat(unemp.toFixed(1)) };
+        }
+
+        function updateInflationUI() {
+            let stats = getInflationStats(interestRate);
+            document.getElementById('inf-rate').textContent = interestRate.toFixed(1) + '%';
+            document.getElementById('inf-val').textContent = stats.inf + '%';
+            document.getElementById('inf-unemp').textContent = stats.unemp + '%';
+            
+            let infStatus = '';
+            if (stats.inf > targetMaxInf) {
+                infStatus = '<span style="color:#ef4444; font-weight:bold;">⚠️ Yüksek Enflasyon! (Para Değersizleşiyor)</span>';
+            } else if (stats.inf < targetMinInf) {
+                infStatus = '<span style="color:#3b82f6; font-weight:bold;">⚠️ Deflasyon Riski! (Ekonomi Durgunlaşıyor)</span>';
+            } else {
+                infStatus = '<span style="color:#10b981; font-weight:bold;">Enflasyon Hedefte! ✅</span>';
+            }
+            
+            let unempStatus = '';
+            if (stats.unemp > maxUnemp) {
+                unempStatus = `<span style="color:#ef4444; font-weight:bold;">⚠️ Kritik İşsizlik Oranı! (Maks: %${maxUnemp})</span>`;
+            } else {
+                unempStatus = 'İşsizlik Oranı Güvenli Bölgede ✅';
+            }
+            
+            document.getElementById('inf-status').innerHTML = `${infStatus}<br>${unempStatus}`;
+        }
+
+        container.innerHTML = `
+            <p style="color:white; text-align:center; font-size:0.95rem; margin-bottom:15px; width:100%;">Faiz oranını değiştirerek enflasyonu <strong>%${targetMinInf}-%${targetMaxInf}</strong> arasına çek, işsizliği <strong>%${maxUnemp}</strong> altında tut!</p>
+            <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:10px; width:100%; margin-bottom:15px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">
+                    <span>🏛️ Politika Faiz Oranı:</span>
+                    <strong id="inf-rate" style="color:var(--clr-warning); font-size:1.2rem;">5.0%</strong>
+                </div>
+                
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span>💸 Yıllık Enflasyon Oranı:</span>
+                    <strong id="inf-val" style="color:#ef4444; font-size:1.1rem;">18.0%</strong>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                    <span>👥 İşsizlik Oranı:</span>
+                    <strong id="inf-unemp" style="color:#3b82f6; font-size:1.1rem;">4.0%</strong>
+                </div>
+                
+                <div id="inf-status" style="font-size:0.85rem; text-align:center; min-height:40px; margin-top:10px; background:rgba(255,255,255,0.05); padding:8px; border-radius:5px; line-height:1.4;"></div>
+            </div>
+            
+            <div style="display:flex; gap:15px; width:100%; justify-content:center; margin-bottom:15px;">
+                <button id="inf-btn-down" class="btn-secondary" style="padding:10px 20px; font-size:1.1rem; flex:1;">⬇️ Faizi Düşür (-1%)</button>
+                <button id="inf-btn-up" class="btn-secondary" style="padding:10px 20px; font-size:1.1rem; flex:1;">⬆️ Faizi Artır (+1%)</button>
+            </div>
+            
+            <button id="inf-btn-submit" class="btn-primary" style="width:100%; padding:12px; font-size:1.1rem; background:var(--clr-success);">Politikayı Uygula</button>
+        `;
+        
+        setTimeout(updateInflationUI, 50);
+
+        document.getElementById('inf-btn-down').onclick = function() {
+            if (interestRate > 0) { interestRate -= 1.0; updateInflationUI(); }
+        };
+        document.getElementById('inf-btn-up').onclick = function() {
+            if (interestRate < 25.0) { interestRate += 1.0; updateInflationUI(); }
+        };
+        document.getElementById('inf-btn-submit').onclick = function() {
+            let stats = getInflationStats(interestRate);
+            if (stats.inf >= targetMinInf && stats.inf <= targetMaxInf && stats.unemp <= maxUnemp) {
+                gameWon = true;
+                this.style.background = 'var(--clr-success)';
+                this.textContent = 'POLİTİKA BAŞARILI! YÜRÜRLÜKTE...';
+                setTimeout(winMinigame, 500);
+            } else {
+                if (stats.inf > targetMaxInf) notify("Başarısız: Enflasyon hala çok yüksek! Faizi artırmalısın.", "error");
+                else if (stats.inf < targetMinInf) notify("Başarısız: Deflasyon riski oluştu, ekonomi durgun! Faizi düşürmelisin.", "error");
+                else if (stats.unemp > maxUnemp) notify(`Başarısız: İşsizlik sınırı aşıldı (%${maxUnemp})! Faizi düşürerek ekonomiyi canlandır.`, "error");
+            }
+        };
+    }
+    else if(task.gameType === 'budget_balance') {
+        let opList = [
+            { id: 0, text: "Gelir Vergisini Artır", budget: 3000, happiness: -15, active: false },
+            { id: 1, text: "Lüks Tüketim Vergisi Getir", budget: 2500, happiness: -5, active: false },
+            { id: 2, text: "Eğitim Bütçesini Kıs", budget: 1500, happiness: -20, active: false },
+            { id: 3, text: "Kamuda Tasarruf Yap", budget: 2000, happiness: -5, active: false },
+            { id: 4, text: "Altyapı Yatırımlarını Durdur", budget: 1000, happiness: -10, active: false }
+        ];
+        let minHapp = task.isExam ? 70 : 60;
+
+        function updateBudgetUI() {
+            let currentBudget = -5000;
+            let currentHapp = 85;
+            
+            opList.forEach(o => {
+                if (o.active) {
+                    currentBudget += o.budget;
+                    currentHapp += o.happiness;
+                }
+            });
+            
+            document.getElementById('bb-budget').textContent = (currentBudget >= 0 ? '+' : '') + currentBudget.toLocaleString('tr-TR') + ' 🪙';
+            document.getElementById('bb-budget').style.color = currentBudget >= 0 ? 'var(--clr-success)' : '#ef4444';
+            
+            document.getElementById('bb-happ').textContent = currentHapp + '%';
+            document.getElementById('bb-happ').style.color = currentHapp >= minHapp ? 'var(--clr-success)' : '#ef4444';
+            
+            let status = '';
+            if (currentBudget < 0) {
+                status += '<span style="color:#ef4444; font-weight:bold;">⚠️ Bütçe Açığı Var! Geliri artırmalı veya tasarruf yapmalısın.</span><br>';
+            } else {
+                status += '<span style="color:#10b981; font-weight:bold;">Bütçe Dengelendi! ✅</span><br>';
+            }
+            
+            if (currentHapp < minHapp) {
+                status += `<span style="color:#ef4444; font-weight:bold;">⚠️ Halk Memnuniyeti Çok Düşük! (En az %${minHapp} olmalı)</span>`;
+            } else {
+                status += 'Halk Memnuniyeti Güvenli Bölgede ✅';
+            }
+            
+            document.getElementById('bb-status').innerHTML = status;
+        }
+
+        container.innerHTML = `
+            <p style="color:white; text-align:center; font-size:0.95rem; margin-bottom:15px; width:100%;">Bütçe açığını kapat. Halk memnuniyetini <strong>%${minHapp}</strong> üzerinde tutarken bütçeyi pozitife çıkar!</p>
+            <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:10px; width:100%; margin-bottom:15px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span>📊 Devlet Bütçe Dengesi:</span>
+                    <strong id="bb-budget" style="font-size:1.1rem;">-5.000 🪙</strong>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                    <span>😊 Halk Memnuniyeti (Moral):</span>
+                    <strong id="bb-happ" style="font-size:1.1rem;">85%</strong>
+                </div>
+                
+                <div id="bb-status" style="font-size:0.85rem; text-align:center; min-height:40px; margin-top:10px; background:rgba(255,255,255,0.05); padding:8px; border-radius:5px; line-height:1.4;"></div>
+            </div>
+            
+            <div id="bb-options" style="display:flex; flex-direction:column; gap:8px; width:100%; margin-bottom:15px; max-height:220px; overflow-y:auto;">
+                ${opList.map(o => `
+                    <button id="bb-opt-${o.id}" class="btn-secondary" style="display:flex; justify-content:space-between; align-items:center; text-align:left; padding:10px 15px; font-size:0.85rem; width:100%; border: 1px solid rgba(255,255,255,0.1);">
+                        <span>${o.text}</span>
+                        <span style="font-size:0.75rem; opacity:0.8; text-align:right;">Bütçe: +${o.budget} | Memnuniyet: ${o.happiness}%</span>
+                    </button>
+                `).join('')}
+            </div>
+            
+            <button id="bb-btn-submit" class="btn-primary" style="width:100%; padding:12px; font-size:1.1rem; background:var(--clr-success);">Bütçeyi Onayla</button>
+        `;
+        
+        setTimeout(updateBudgetUI, 50);
+
+        opList.forEach(o => {
+            document.getElementById(`bb-opt-${o.id}`).onclick = function() {
+                o.active = !o.active;
+                if(o.active) {
+                    this.style.background = 'rgba(59, 130, 246, 0.2)';
+                    this.style.borderColor = '#3b82f6';
+                } else {
+                    this.style.background = 'var(--clr-primary)';
+                    this.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                }
+                updateBudgetUI();
+            };
+        });
+
+        document.getElementById('bb-btn-submit').onclick = function() {
+            let currentBudget = -5000;
+            let currentHapp = 85;
+            opList.forEach(o => {
+                if (o.active) {
+                    currentBudget += o.budget;
+                    currentHapp += o.happiness;
+                }
+            });
+
+            if (currentBudget >= 0 && currentHapp >= minHapp) {
+                gameWon = true;
+                this.style.background = 'var(--clr-success)';
+                this.textContent = 'KABUL EDİLDİ! ONAYLANDI...';
+                setTimeout(winMinigame, 500);
+            } else {
+                if (currentBudget < 0) notify("Başarısız: Bütçe açığı kapatılamadı!", "error");
+                else if (currentHapp < minHapp) notify(`Başarısız: Halk isyanda, memnuniyet %${minHapp} altında!`, "error");
+            }
+        };
+    }
+    else if(task.gameType === 'opportunity_cost') {
+        let opProj = [
+            { id: 0, name: "A: Baraj İnşaatı", cost: 35, profit: 65, selected: false },
+            { id: 1, name: "B: Teknoloji Ar-Ge", cost: 45, profit: 85, selected: false },
+            { id: 2, name: "C: Turizm Altyapısı", cost: 25, profit: 40, selected: false },
+            { id: 3, name: "D: Tarım Desteği", cost: 15, profit: 25, selected: false },
+            { id: 4, name: "E: Eğitim Reformu", cost: 10, profit: 15, selected: false }
+        ];
+        let budgetLimit = 100;
+        let targetProfit = task.isExam ? 170 : 150;
+
+        function updateOCUI() {
+            let currentCost = 0;
+            let currentProfit = 0;
+            
+            opProj.forEach(p => {
+                if (p.selected) {
+                    currentCost += p.cost;
+                    currentProfit += p.profit;
+                }
+            });
+            
+            document.getElementById('oc-cost').textContent = currentCost + ' / ' + budgetLimit;
+            document.getElementById('oc-cost').style.color = currentCost <= budgetLimit ? 'var(--clr-success)' : '#ef4444';
+            
+            document.getElementById('oc-profit').textContent = currentProfit + ' / ' + targetProfit;
+            document.getElementById('oc-profit').style.color = currentProfit >= targetProfit ? 'var(--clr-success)' : 'var(--clr-warning)';
+            
+            let status = '';
+            if (currentCost > budgetLimit) {
+                status += `<span style="color:#ef4444; font-weight:bold;">⚠️ Bütçe Sınırı Aşıldı! (${currentCost - budgetLimit}M fazla)</span><br>`;
+            } else {
+                status += 'Bütçe Sınırı Aşılmadı ✅<br>';
+            }
+            
+            if (currentProfit < targetProfit) {
+                status += `<span style="color:var(--clr-warning); font-weight:bold;">Hedef Kazanç Sağlanamadı (Gereken: ${targetProfit}M)</span>`;
+            } else {
+                status += 'Hedef Kazanç Sağlandı ✅';
+            }
+            
+            document.getElementById('oc-status').innerHTML = status;
+        }
+
+        container.innerHTML = `
+            <p style="color:white; text-align:center; font-size:0.95rem; margin-bottom:15px; width:100%;">Bütçeyi (${budgetLimit}M) aşmadan en yüksek getirili projeleri seçip en az <strong>${targetProfit}M</strong> getiri sağla!</p>
+            <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:10px; width:100%; margin-bottom:15px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span>💰 Toplam Yatırım Maliyeti:</span>
+                    <strong id="oc-cost" style="font-size:1.1rem;">0 / 100</strong>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                    <span>📈 Beklenen Toplam Getiri:</span>
+                    <strong id="oc-profit" style="font-size:1.1rem;">0 / ${targetProfit}</strong>
+                </div>
+                
+                <div id="oc-status" style="font-size:0.85rem; text-align:center; min-height:40px; margin-top:10px; background:rgba(255,255,255,0.05); padding:8px; border-radius:5px; line-height:1.4;"></div>
+            </div>
+            
+            <div id="oc-options" style="display:flex; flex-direction:column; gap:8px; width:100%; margin-bottom:15px; max-height:220px; overflow-y:auto;">
+                ${opProj.map(p => `
+                    <button id="oc-proj-${p.id}" class="btn-secondary" style="display:flex; justify-content:space-between; align-items:center; text-align:left; padding:10px 15px; font-size:0.85rem; width:100%; border: 1px solid rgba(255,255,255,0.1);">
+                        <span>${p.name}</span>
+                        <span style="font-size:0.8rem; opacity:0.8;">Maliyet: ${p.cost}M | Getiri: ${p.profit}M</span>
+                    </button>
+                `).join('')}
+            </div>
+            
+            <button id="oc-btn-submit" class="btn-primary" style="width:100%; padding:12px; font-size:1.1rem; background:var(--clr-success);">Portföyü Onayla</button>
+        `;
+        
+        setTimeout(updateOCUI, 50);
+
+        opProj.forEach(p => {
+            document.getElementById(`oc-proj-${p.id}`).onclick = function() {
+                p.selected = !p.selected;
+                if(p.selected) {
+                    this.style.background = 'rgba(59, 130, 246, 0.2)';
+                    this.style.borderColor = '#3b82f6';
+                } else {
+                    this.style.background = 'var(--clr-primary)';
+                    this.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                }
+                updateOCUI();
+            };
+        });
+
+        document.getElementById('oc-btn-submit').onclick = function() {
+            let currentCost = 0;
+            let currentProfit = 0;
+            opProj.forEach(p => {
+                if (p.selected) {
+                    currentCost += p.cost;
+                    currentProfit += p.profit;
+                }
+            });
+
+            if (currentCost <= budgetLimit && currentProfit >= targetProfit) {
+                gameWon = true;
+                this.style.background = 'var(--clr-success)';
+                this.textContent = 'YATIRIM BAŞARILI! ONAYLANDI...';
+                setTimeout(winMinigame, 500);
+            } else {
+                if (currentCost > budgetLimit) notify(`Başarısız: Bütçe aşıldı! En fazla ${budgetLimit} harcayabilirsin.`, "error");
+                else if (currentProfit < targetProfit) notify(`Başarısız: Getiri hedefi yetersiz! En az ${targetProfit}M getiri gerekir.`, "error");
+            }
+        };
+    }
+};
+
 function startMinigame(orderId) {
     let orderIndex = gameState.activeOrders.findIndex(o => o.id === orderId);
     if(orderIndex === -1) return;
@@ -2513,6 +3185,25 @@ function winMinigame() {
     if (!minigameActive) return;
     minigameActive = false;
     document.getElementById('minigame-area').style.display = 'none';
+    
+    if (currentMGOrder && currentMGOrder.isAcademic) {
+        if (gameState.monthlyCompletedAcademicTasks === undefined) gameState.monthlyCompletedAcademicTasks = 0;
+        gameState.monthlyCompletedAcademicTasks++;
+        
+        // Zihinsel Yorgunluk: Tamamlanan her akademik görev karakterden -2 Moral ve -0.5 Can götürür.
+        gameState.survival.health = Math.max(0, gameState.survival.health - 0.5);
+        gameState.survival.morale = Math.max(0, gameState.survival.morale - 2);
+        
+        notify(`${currentMGOrder.title} başarıyla tamamlandı! Zihinsel Yorgunluk: -2 Moral, -0.5 Can`, "success");
+        
+        gameState.activeAcademicTasks = gameState.activeAcademicTasks.filter(t => t.id !== currentMGOrder.id);
+        
+        generateDailyAcademicTasks();
+        if (typeof updateSurvivalUI === 'function') updateSurvivalUI();
+        if (typeof updateUI === 'function') updateUI();
+        saveGame(true);
+        return;
+    }
     
     gameState.jobSkill += currentMGOrder.skillReward;
     
@@ -3029,3 +3720,47 @@ setInterval(() => {
         saveGame(true);
     }
 }, 10000);
+
+window.requestDebt = function() {
+    let creditor = document.getElementById('debt-request-target').value.trim();
+    let amount = parseInt(document.getElementById('debt-request-amount').value);
+    let term = parseInt(document.getElementById('debt-request-term').value);
+
+    if (!creditor || isNaN(amount) || amount <= 0) {
+        notify("Lütfen geçerli bir alıcı kullanıcı adı ve miktar girin.", "error");
+        return;
+    }
+
+    if (creditor.toLowerCase() === gameState.username.toLowerCase()) {
+        notify("Kendinizden borç talep edemezsiniz.", "error");
+        return;
+    }
+
+    if (window.socket) {
+        window.socket.emit('request_debt', { target: creditor, amount: amount, term: term });
+        document.getElementById('debt-request-target').value = '';
+        document.getElementById('debt-request-amount').value = '';
+    } else {
+        notify("Sunucu bağlantısı yok. Talep gönderilemiyor.", "error");
+    }
+};
+
+window.acceptDebtRequest = function(debtor, amount, term) {
+    if (confirm(`${debtor} adlı oyuncunun ${amount.toLocaleString('tr-TR')} 🪙 tutarındaki ${term} ay vadeli borç talebini onaylıyor musunuz?`)) {
+        if (gameState.balance < amount) {
+            notify("Borç göndermek için yeterli bakiyeniz yok!", "error");
+            return;
+        }
+        if (window.socket) {
+            window.socket.emit('p2p_transfer', { target: debtor, amount: amount, term: term, year: gameState.time.year, month: gameState.time.month });
+        }
+    }
+};
+
+window.rejectDebtRequest = function(id) {
+    if (confirm("Bu borç talebini reddetmek istediğinize emin misiniz?")) {
+        if (window.socket) {
+            window.socket.emit('reject_debt_request', { id: id });
+        }
+    }
+};
