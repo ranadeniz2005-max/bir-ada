@@ -800,9 +800,11 @@ io.on('connection', (socket) => {
         if (!players[socket.id]) return;
         let sender = players[socket.id].username;
         let message = data.message;
-        let cost = 50;
+        
+        let isAdmin = players[socket.id] && players[socket.id].isAdmin;
+        let cost = isAdmin ? 0 : 50;
 
-        if (!db[sender] || db[sender].balance < cost) {
+        if (!isAdmin && (!db[sender] || db[sender].balance < cost)) {
             socket.emit('global_news_response', { success: false, msg: 'Bülten yayını için 50 🪙 bakiyeniz yetersiz.' });
             return;
         }
@@ -815,10 +817,14 @@ io.on('connection', (socket) => {
         
         db['SERVER_NEWS'] = db['SERVER_NEWS'].filter(news => (totalDays - (news.publishTotalDays || 0)) <= 30);
 
-        db[sender].balance -= cost;
-        saveDatabaseKeys(['SERVER_NEWS', sender]);
+        if (cost > 0) {
+            db[sender].balance -= cost;
+            saveDatabaseKeys(['SERVER_NEWS', sender]);
+        } else {
+            saveDatabaseKey('SERVER_NEWS', db['SERVER_NEWS']);
+        }
         
-        socket.emit('global_news_response', { success: true, msg: 'Haber bültene başarıyla eklendi!', newBalance: db[sender].balance });
+        socket.emit('global_news_response', { success: true, msg: 'Haber bültene başarıyla eklendi!', newBalance: db[sender] ? db[sender].balance : 0 });
         io.emit('global_news_sync', db['SERVER_NEWS']);
     });
 

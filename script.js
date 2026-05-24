@@ -481,7 +481,10 @@ document.addEventListener('DOMContentLoaded', () => {
         window.socket.on('global_news_response', (data) => {
             if (data.success) {
                 notify(data.msg, 'success');
-                updateBalance(-50, "Haber Bülteni Yayını", false);
+                let cost = gameState.isAdmin ? 0 : 50;
+                if (cost > 0) {
+                    updateBalance(-cost, "Haber Bülteni Yayını", false);
+                }
                 updateUI();
                 saveGame(true);
             } else {
@@ -3703,10 +3706,13 @@ window.renderDMHistory = function() {
 };
 
 window.publishGlobalNews = function() {
-    let msg = prompt("Tüm adaya yayınlanacak mesajınızı yazın (Ücret: 50 🪙):");
+    let promptMsg = gameState.isAdmin 
+        ? "Tüm adaya yayınlanacak mesajınızı yazın (Yönetici - Sınırsız karakter):"
+        : "Tüm adaya yayınlanacak mesajınızı yazın (Ücret: 50 🪙, En fazla 100 karakter):";
+    let msg = prompt(promptMsg);
     if (!msg || msg.trim() === '') return;
     
-    if (msg.length > 100) {
+    if (!gameState.isAdmin && msg.length > 100) {
         notify("Mesajınız çok uzun! En fazla 100 karakter.", "error");
         return;
     }
