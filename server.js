@@ -531,7 +531,16 @@ io.on('connection', (socket) => {
     socket.on('get_online_players', () => {
         let onlineList = Object.values(players).map(p => p.username);
         
-        let venueData = { cafe: { patrons: [], workers: [] }, firin: { patrons: [], workers: [] }, butik: { patrons: [], workers: [] }, restoran: { patrons: [], workers: [] }, ofis: { patrons: [], workers: [] } };
+        let venueData = { 
+            cafe: { patrons: [], workers: [] }, 
+            firin: { patrons: [], workers: [] }, 
+            butik: { patrons: [], workers: [] }, 
+            restoran: { patrons: [], workers: [] }, 
+            ofis: { patrons: [], workers: [] },
+            gym: { patrons: [], workers: [] },
+            spa: { patrons: [], workers: [] },
+            kuafor: { patrons: [], workers: [] }
+        };
         let students = [];
         for (let username in db) {
             if (username === 'ADMIN_SYSTEM' || username === 'SERVER_TIME') continue;

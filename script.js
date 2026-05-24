@@ -4003,6 +4003,7 @@ window.renderUniStudents = function() {
 
 window.renderCityVenues = function() {
     window.currentVisitedVenues = []; // Reset when modal opens
+    window.currentlySatVenueId = null; // Reset table sitting state when modal opens
     // Önce sunucudan güncel online listesini iste
     if (window.socket) {
         window.socket.emit('get_online_players');
@@ -4012,17 +4013,137 @@ window.renderCityVenues = function() {
     }
 };
 
+window.satAtVenueTable = function(venueId) {
+    window.currentlySatVenueId = venueId;
+    renderCityVenuesReal();
+    notify("Masaya oturdunuz. Menüden sipariş verebilirsiniz!", "info");
+};
+
 window.renderCityVenuesReal = function() {
     const list = document.getElementById('city-venues-container');
     if(!list) return;
     
-    // Mekanlar ve fiyatları
+    // Mekanlar, fiyatları ve menüleri
     const venues = [
-        { id: 'cafe', title: 'Ada Kafe', desc: 'Kahve İç & Dinlen', cost: 500, morale: 10, health: 0, icon: '☕', defaultPatron: 'Mert_14', defaultWorker: 'Zeynep_K' },
-        { id: 'firin', title: 'Ada Fırın', desc: 'Tatlı Molası', cost: 700, morale: 10, health: 5, icon: '🥐', defaultPatron: 'Kaan01', defaultWorker: 'Esra_M' },
-        { id: 'butik', title: 'Ada Butik', desc: 'Alışveriş Terapisi', cost: 1500, morale: 40, health: 0, icon: '🎽', defaultPatron: 'Ada_Star', defaultWorker: 'Berkcan99' },
-        { id: 'restoran', title: 'Ada Restoran', desc: 'Lüks Akşam Yemeği', cost: 2000, morale: 15, health: 25, icon: '🥩', defaultPatron: 'Deniz_Kaptan', defaultWorker: 'Borsa_Kurtlari' },
-        { id: 'ofis', title: 'Ada Ofis', desc: 'Part-Time Merkezi', cost: 1000, morale: 20, health: 0, icon: '🏢', defaultPatron: 'Sistem_Müdürü', defaultWorker: 'Stajyer_Bot' }
+        { 
+            id: 'cafe', 
+            title: 'Ada Kafe', 
+            desc: 'Kahve İç & Dinlen', 
+            icon: '☕', 
+            defaultPatron: 'Mert_14', 
+            defaultWorker: 'Zeynep_K',
+            menu: [
+                { name: 'Türk Kahvesi', cost: 200, morale: 4, health: 0, icon: '☕' },
+                { name: 'Filtre Kahve', cost: 300, morale: 6, health: 0, icon: '☕' },
+                { name: 'Sıcak Latte', cost: 400, morale: 8, health: 1, icon: '🥛' },
+                { name: 'Cold Brew Kahve', cost: 500, morale: 10, health: 0, icon: '🧊' },
+                { name: 'Ada Özel Kokteyl', cost: 800, morale: 18, health: -1, icon: '🍹' }
+            ]
+        },
+        { 
+            id: 'firin', 
+            title: 'Ada Fırın', 
+            desc: 'Tatlı Molası', 
+            icon: '🥐', 
+            defaultPatron: 'Kaan01', 
+            defaultWorker: 'Esra_M',
+            menu: [
+                { name: 'Çay & Simit', cost: 250, morale: 4, health: 2, icon: '🥖' },
+                { name: 'Boyoz & Yumurta Tabağı', cost: 400, morale: 6, health: 4, icon: '🍳' },
+                { name: 'Çikolatalı Kruvasan', cost: 500, morale: 8, health: 3, icon: '🥐' },
+                { name: 'San Sebastian Dilim', cost: 700, morale: 12, health: 5, icon: '🍰' },
+                { name: 'Çilekli Yaş Pasta Dilimi', cost: 900, morale: 15, health: 6, icon: '🎂' }
+            ]
+        },
+        { 
+            id: 'butik', 
+            title: 'Ada Butik', 
+            desc: 'Alışveriş Terapisi', 
+            icon: '🎽', 
+            defaultPatron: 'Ada_Star', 
+            defaultWorker: 'Berkcan99',
+            menu: [
+                { name: 'Retro Güneş Gözlüğü', cost: 600, morale: 15, health: 0, icon: '🕶️' },
+                { name: 'Ada Baskılı Basic Tişört', cost: 1000, morale: 25, health: 0, icon: '👕' },
+                { name: 'Keten Yazlık Gömlek', cost: 1500, morale: 40, health: 0, icon: '👔' },
+                { name: 'Tasarım Deri Ceket', cost: 3000, morale: 80, health: 0, icon: '🧥' },
+                { name: 'Özel Tasarım Kombin', cost: 5000, morale: 140, health: 0, icon: '👗' }
+            ]
+        },
+        { 
+            id: 'restoran', 
+            title: 'Ada Restoran', 
+            desc: 'Lüks Akşam Yemeği', 
+            icon: '🥩', 
+            defaultPatron: 'Deniz_Kaptan', 
+            defaultWorker: 'Borsa_Kurtlari',
+            menu: [
+                { name: 'Mercimek Çorbası Tabağı', cost: 400, morale: 4, health: 6, icon: '🥣' },
+                { name: 'Tavuk Izgara Kasesi', cost: 1200, morale: 10, health: 15, icon: '🥗' },
+                { name: 'Köz Patlıcanlı Ada Kebabı', cost: 2000, morale: 15, health: 25, icon: '🍢' },
+                { name: 'Lokum Bonfile Steak', cost: 3500, morale: 25, health: 45, icon: '🥩' },
+                { name: 'Ada Usulü Istakoz Tabağı', cost: 6000, morale: 45, health: 80, icon: '🦞' }
+            ]
+        },
+        { 
+            id: 'ofis', 
+            title: 'Ada Ofis', 
+            desc: 'Part-Time Merkezi', 
+            icon: '🏢', 
+            defaultPatron: 'Sistem_Müdürü', 
+            defaultWorker: 'Stajyer_Bot',
+            menu: [
+                { name: 'Hızlı Çalışma Masası', cost: 300, morale: 5, health: 0, icon: '💻' },
+                { name: 'Sınırsız Filtre Kahve & İnternet', cost: 600, morale: 10, health: 0, icon: '🌐' },
+                { name: 'Sessiz Kabin Saatlik Kiralama', cost: 1200, morale: 20, health: 0, icon: '🔇' },
+                { name: 'Toplantı Odası (Sunum Ekipmanlı)', cost: 2200, morale: 40, health: 0, icon: '👥' },
+                { name: 'VIP Özel Ofis Günlük Kullanım', cost: 4500, morale: 85, health: 0, icon: '🏢' }
+            ]
+        },
+        { 
+            id: 'gym', 
+            title: 'Ada Spor & Fitness', 
+            desc: 'Sağlıklı Yaşam & Kondisyon', 
+            icon: '🏋️‍♂️', 
+            defaultPatron: 'Hoca_Volkan', 
+            defaultWorker: 'Antrenor_Mert',
+            menu: [
+                { name: 'Protein Bar & Sporcu İçeceği', cost: 150, morale: 2, health: 2, icon: '🥤' },
+                { name: 'Günlük Fitness Giriş Bileti', cost: 400, morale: 8, health: 5, icon: '🎫' },
+                { name: 'Personal Trainer Özel Dersi', cost: 1500, morale: 25, health: 20, icon: '💪' },
+                { name: 'Özel Pilates & Reformer Dersi', cost: 3000, morale: 50, health: 35, icon: '🧘' },
+                { name: 'VIP Gold Yıllık Kart', cost: 8000, morale: 120, health: 60, icon: '🏆' }
+            ]
+        },
+        { 
+            id: 'spa', 
+            title: 'Ada SPA & Masaj', 
+            desc: 'Lüks Arınma & Masaj', 
+            icon: '💆', 
+            defaultPatron: 'Melis_San', 
+            defaultWorker: 'Terapist_Asli',
+            menu: [
+                { name: 'Detoks Çayı & Sauna Girişi', cost: 500, morale: 10, health: 5, icon: '🧖' },
+                { name: 'Klasik İsveç Masajı (50 Dk)', cost: 1200, morale: 25, health: 10, icon: '💆' },
+                { name: 'Sıcak Taş & Aromaterapi Masajı', cost: 2500, morale: 60, health: 15, icon: '💆‍♂️' },
+                { name: 'VIP Çift Masajı & Özel Jakuzi', cost: 6000, morale: 135, health: 35, icon: '🛀' }
+            ]
+        },
+        { 
+            id: 'kuafor', 
+            title: 'Ada Kuaför/Berber', 
+            desc: 'Kişisel Bakım & Saç Tasarım', 
+            icon: '💈', 
+            defaultPatron: 'Berber_Ahmet', 
+            defaultWorker: 'Makas_Salih',
+            menu: [
+                { name: 'Saç & Sakal Tıraşı', cost: 250, morale: 8, health: 0, icon: '✂️' },
+                { name: 'Fön & Saç Bakımı', cost: 400, morale: 15, health: 0, icon: '💇' },
+                { name: 'Cilt Bakımı & Maske', cost: 750, morale: 25, health: 2, icon: '🧖‍♀️' },
+                { name: 'VIP Saç Boyama & Stil Değişimi', cost: 1800, morale: 60, health: 0, icon: '🎨' },
+                { name: 'Komple Bakım & Damat Tıraşı Paketi', cost: 4000, morale: 120, health: 5, icon: '👑' }
+            ]
+        }
     ];
     
     let html = '';
@@ -4031,8 +4152,6 @@ window.renderCityVenuesReal = function() {
     venues.forEach(v => {
         let isPatron = gameState.businesses.includes(v.id);
         let isWorker = (v.id === 'ofis') ? (gameState.jobType === 'part-time') : (gameState.jobType === ('asgari-' + v.id));
-        let finalCost = (isPatron || isWorker) ? Math.floor(v.cost * 0.6) : v.cost;
-        let discountMsg = (isPatron || isWorker) ? `<span style="color:var(--clr-success); font-weight:bold; font-size:0.8rem;">(%40 İndirimli)</span>` : '';
         
         let serverPatrons = window.cityVenueData && window.cityVenueData[v.id] && window.cityVenueData[v.id].patrons ? [...window.cityVenueData[v.id].patrons] : [];
         let serverWorkers = window.cityVenueData && window.cityVenueData[v.id] && window.cityVenueData[v.id].workers ? [...window.cityVenueData[v.id].workers] : [];
@@ -4065,12 +4184,66 @@ window.renderCityVenuesReal = function() {
             }
         }
 
+        // Masaya Otur butonu durumu
+        let sitBtn = '';
+        if (window.currentlySatVenueId === v.id) {
+            sitBtn = `
+            <button class="btn-secondary" style="width:100%; margin-top:10px; background: rgba(16, 185, 129, 0.2); border-color: var(--clr-success); color: var(--clr-success); font-weight: bold; cursor: default;" onclick="event.preventDefault();">
+                🟢 Masadasınız
+            </button>
+            `;
+        } else {
+            sitBtn = `
+            <button class="btn-primary" style="width:100%; margin-top:10px; background: transparent; border: 1px solid var(--clr-primary); color: var(--clr-primary);" onclick="satAtVenueTable('${v.id}')">
+                🪑 Masaya Otur
+            </button>
+            `;
+        }
+
+        // Menü Öğeleri Listesi (Sadece masaya oturulmuşsa)
+        let menuHtml = '';
+        if (window.currentlySatVenueId === v.id) {
+            menuHtml = `
+            <div style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; text-align: left;">
+                <h4 style="margin: 0 0 10px 0; color: #a78bfa; font-size: 0.9rem; display: flex; align-items: center; gap: 5px;">
+                    📋 Menü & Ürün Siparişi
+                </h4>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+            `;
+            
+            v.menu.forEach(item => {
+                let itemCost = (isPatron || isWorker) ? Math.floor(item.cost * 0.6) : item.cost;
+                let originalCostStr = (isPatron || isWorker) ? `<span style="text-decoration: line-through; font-size: 0.75rem; opacity: 0.6; margin-right: 5px;">${item.cost.toLocaleString('tr-TR')} 🪙</span>` : '';
+                
+                let gainDetail = [];
+                if (item.health > 0) gainDetail.push(`<span style="color:#f87171;">❤️ +${item.health} Can</span>`);
+                if (item.health < 0) gainDetail.push(`<span style="color:#f87171;">❤️ ${item.health} Can</span>`);
+                if (item.morale > 0) gainDetail.push(`<span style="color:#fbbf24;">🎭 +${item.morale} Moral</span>`);
+                
+                menuHtml += `
+                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); padding: 8px 10px; border-radius: 8px; font-size: 0.8rem;">
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                        <span style="font-weight: bold; color: white;">${item.icon} ${item.name}</span>
+                        <span style="font-size: 0.7rem; color: var(--clr-text-muted);">${gainDetail.join(' | ')}</span>
+                    </div>
+                    <button class="btn-primary" style="margin: 0; padding: 6px 12px; width: auto; font-size: 0.75rem; font-weight: bold; border-radius: 6px; background: ${(isWorker || isPatron) ? 'var(--clr-success)' : 'var(--clr-primary)'}; color: ${(isWorker || isPatron) ? 'black' : 'white'};" onclick="visitCityVenue('${v.id}', ${itemCost}, ${item.morale}, ${item.health}, '${item.name.replace(/'/g, "\\'")}')">
+                        ${originalCostStr}${itemCost.toLocaleString('tr-TR')} 🪙
+                    </button>
+                </div>
+                `;
+            });
+            
+            menuHtml += `
+                </div>
+            </div>
+            `;
+        }
+
         html += `
         <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); text-align:center;">
             <div style="font-size:2rem; margin-bottom:5px;">${v.icon}</div>
             <h3 style="margin:5px 0;">${v.title}</h3>
             <p style="font-size:0.85rem; color:var(--clr-text-muted);">${v.desc}</p>
-            <p style="font-size:0.8rem; margin:5px 0;">Kazanım: ${v.health>0 ? '+'+Math.floor(v.health)+' Can, ' : ''}+${v.morale} Moral</p>
             
             <details style="margin:10px 0; background:rgba(0,0,0,0.3); border-radius:5px; padding:5px; text-align:left; font-size:0.8rem;">
                 <summary style="cursor:pointer; color:var(--clr-primary);">Şu an Mekandakiler ⏷</summary>
@@ -4090,24 +4263,27 @@ window.renderCityVenuesReal = function() {
                 </div>
             </details>
 
-            <button class="btn-primary" style="width:100%; margin-top:5px; background:${(isWorker || isPatron) ? 'var(--clr-success)' : 'var(--clr-primary)'}; color:${(isWorker || isPatron) ? 'black' : 'white'};" onclick="visitCityVenue('${v.id}', ${finalCost}, ${v.morale}, ${v.health})">
-                Harcama Yap (-${finalCost.toLocaleString('tr-TR')} 🪙) <br>${discountMsg}
-            </button>
+            ${sitBtn}
+            ${menuHtml}
         </div>`;
     });
     list.innerHTML = html;
 };
 
-window.visitCityVenue = function(id, cost, moraleGain, healthGain) {
-    if(systemSpend(cost, `Şehir Mekanı Ziyareti (${id.toUpperCase()})`)) {
+window.visitCityVenue = function(id, cost, moraleGain, healthGain, productName) {
+    let spendDesc = productName ? `${productName} (${id.toUpperCase()})` : `Şehir Mekanı Ziyareti (${id.toUpperCase()})`;
+    if(systemSpend(cost, spendDesc)) {
         window.currentVisitedVenues = window.currentVisitedVenues || [];
-        window.currentVisitedVenues.push(id);
-        gameState.survival.morale = Math.min(100, gameState.survival.morale + moraleGain);
-        if(healthGain > 0) {
-            gameState.survival.health = Math.min(100, gameState.survival.health + healthGain);
+        if(!window.currentVisitedVenues.includes(id)) {
+            window.currentVisitedVenues.push(id);
         }
-        let isWorkerOrBoss = gameState.businesses.includes(id) || gameState.jobType === ('asgari-' + id);
-        notify(`${id.toUpperCase()} mekanına gittiniz. Eksi bakiye yansıtıldı!` + (isWorkerOrBoss ? " Kendi bünyenizdeki indirim uygulandı!" : ""), "success");
+        gameState.survival.morale = Math.min(100, gameState.survival.morale + moraleGain);
+        if(healthGain !== 0) {
+            gameState.survival.health = Math.min(100, Math.max(0, gameState.survival.health + healthGain));
+        }
+        let isWorkerOrBoss = gameState.businesses.includes(id) || ((id === 'ofis') ? (gameState.jobType === 'part-time') : (gameState.jobType === ('asgari-' + id)));
+        let purchasedMsg = productName ? `${id.toUpperCase()}'den ${productName} aldınız.` : `${id.toUpperCase()} mekanına gittiniz.`;
+        notify(purchasedMsg + " Eksi bakiye yansıtıldı!" + (isWorkerOrBoss ? " Kendi bünyenizdeki indirim uygulandı!" : ""), "success");
         updateSurvivalUI();
     }
 };
