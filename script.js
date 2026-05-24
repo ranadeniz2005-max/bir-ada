@@ -2,6 +2,51 @@
  * Proje: Bir Ada - Şehir, Ticaret ve Hayatta Kalma Simülasyonu
  */
 
+function normalizeDateStr(str) {
+    if (!str || typeof str !== 'string') return str;
+    
+    // Full date format: 1.Y 1.A 1.G (Sabah) or 1.Y 1.A 1.G (Öğle) or 1.Y 1.A 1.G (Akşam)
+    const fullRegex = /^(\d+)\.Y\s+(\d+)\.A\s+(\d+)\.G\s*(\((?:Sabah|Öğle|Akşam|sabah|öğle|akşam)\))$/i;
+    let match = str.match(fullRegex);
+    if (match) {
+        const y = String(match[1]).padStart(4, '0');
+        const m = String(match[2]).padStart(2, '0');
+        const d = String(match[3]).padStart(2, '0');
+        const vakit = match[4];
+        return `${d}.${m}.${y} ${vakit}`;
+    }
+
+    // Full date format without phase
+    const fullNoPhaseRegex = /^(\d+)\.Y\s+(\d+)\.A\s+(\d+)\.G$/i;
+    match = str.match(fullNoPhaseRegex);
+    if (match) {
+        const y = String(match[1]).padStart(4, '0');
+        const m = String(match[2]).padStart(2, '0');
+        const d = String(match[3]).padStart(2, '0');
+        return `${d}.${m}.${y}`;
+    }
+
+    // Chart label format: 1.Y 1.A
+    const chartRegex = /^(\d+)\.Y\s+(\d+)\.A$/i;
+    match = str.match(chartRegex);
+    if (match) {
+        const y = String(match[1]).padStart(4, '0');
+        const m = String(match[2]).padStart(2, '0');
+        return `${m}.${y}`;
+    }
+
+    // Career log format: [1.Yıl 1.Ay] ...
+    const careerRegex = /^\[(\d+)\.Yıl\s+(\d+)\.Ay\]/i;
+    match = str.match(careerRegex);
+    if (match) {
+        const y = String(match[1]).padStart(4, '0');
+        const m = String(match[2]).padStart(2, '0');
+        return str.replace(careerRegex, `[${m}.${y}]`);
+    }
+
+    return str;
+}
+
 const gameState = {
     username: '',
     balance: 28000,
@@ -33,6 +78,10 @@ const gameState = {
     careerHistory: [],   // İş Geçmişi / Özgeçmiş Listesi
     jobApplications: [], // Admin paneline düşen CV başvuruları
     jobApplicationCooldown: 0, // Reddedilirse 2 ay bekleme süresi
+    universityFrozen: false,
+    universityFrozenMonths: 0,
+    universityFreezeCount: 0,
+    universityDropoutCooldown: 0,
     socialMessages: [],  // Ada Sosyal Mesajları
     friends: [],         // Sosyal Arkadaş Listesi
     friendRequests: [],  // Bekleyen Arkadaş İstekleri
@@ -158,6 +207,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (pendingSavedState !== "NEW_PLAYER") {
                     let oldTotalPhases = pendingSavedState.time ? pendingSavedState.time.totalPhases : 0;
                     Object.assign(gameState, pendingSavedState);
+                    
+                    // Geçmiş tarihleri yeni formata uyarla
+                    if (Array.isArray(gameState.transactions)) {
+                        gameState.transactions.forEach(t => { t.dateStr = normalizeDateStr(t.dateStr); });
+                    }
+                    if (Array.isArray(gameState.careerHistory)) {
+                        gameState.careerHistory = gameState.careerHistory.map(normalizeDateStr);
+                    }
+                    if (gameState.financeHistory && Array.isArray(gameState.financeHistory.labels)) {
+                        gameState.financeHistory.labels = gameState.financeHistory.labels.map(normalizeDateStr);
+                    }
+                    if (Array.isArray(gameState.lawsuits)) {
+                        gameState.lawsuits.forEach(law => { law.dateStr = normalizeDateStr(law.dateStr); });
+                    }
+                    
                     if(gameState.monthlyCompletedAcademicTasks === undefined) gameState.monthlyCompletedAcademicTasks = 0;
                     if(!gameState.activeAcademicTasks) gameState.activeAcademicTasks = [];
                     notify("Kayıtlı oyununuz sunucudan başarıyla yüklendi!", "success");
@@ -468,7 +532,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         window.socket.on('notification_sync', (data) => {
-            gameState.notificationHistory = data.history || [];
+            gameState.notificationHistory = (data.history || []).map(item => {
+                if (item && item.dateStr) {
+                    item.dateStr = normalizeDateStr(item.dateStr);
+                }
+                return item;
+            });
             gameState.unreadNotifications = data.unread || 0;
             updateUI();
         });
@@ -865,14 +934,85 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Eğitim
     document.getElementById('btn-study-uni').onclick = () => { 
-        if(!gameState.hasDiploma && !gameState.isStudent) { 
+        if(gameState.hasDiploma) {
+            return notify("Zaten mezun oldunuz!", "error");
+        }
+        if(gameState.universityDropoutCooldown > 0) {
+            return notify(`Üniversiteden yeni ayrıldınız. Tekrar kaydolmak için ${gameState.universityDropoutCooldown} ay beklemelisiniz!`, "error");
+        }
+        if(!gameState.isStudent && !gameState.universityFrozen) { 
             gameState.isStudent = true; 
+            gameState.universityMonths = 0;
             gameState.monthlyCompletedAcademicTasks = 0;
             gameState.activeAcademicTasks = [];
+            gameState.universityFrozen = false;
+            gameState.universityFrozenMonths = 0;
+            gameState.universityFreezeCount = 0;
             generateDailyAcademicTasks();
-            notify("Okula kaydoldun. Temsili 2 yıl sürecek. Öğrenciyken Sadece Part-Time çalışabilirsin."); 
+            notify("Okula kaydoldunuz! Temsili 2 yıl sürecek. Öğrenciyken sadece Part-Time çalışabilirsiniz.", "success"); 
             updateUI(); 
+            saveGame(true);
         } 
+    };
+
+    document.getElementById('btn-freeze-uni').onclick = () => {
+        if (gameState.universityFrozen) {
+            // Dondurmayı Çöz (Geri Dön)
+            gameState.universityFrozen = false;
+            gameState.isStudent = true;
+            gameState.universityFrozenMonths = 0;
+            generateDailyAcademicTasks();
+            notify("Okul dondurması iptal edildi! Eğitime kaldığınız yerden devam ediyorsunuz.", "success");
+            updateUI();
+            saveGame(true);
+        } else if (gameState.isStudent) {
+            // Dondur
+            if ((gameState.universityFreezeCount || 0) >= 2) {
+                return notify("Bir eğitim dönemi boyunca okulu en fazla 2 kere dondurabilirsiniz!", "error");
+            }
+            if (confirm("Üniversiteyi dondurmak istediğinize emin misiniz? Bu esnada öğrenci avantajlarınız askıya alınır ve part-time işiniz varsa istifa edersiniz.")) {
+                gameState.universityFrozen = true;
+                gameState.isStudent = false;
+                gameState.universityFreezeCount = (gameState.universityFreezeCount || 0) + 1;
+                gameState.universityFrozenMonths = 0;
+                gameState.activeAcademicTasks = [];
+                
+                if (gameState.jobType === 'part-time') {
+                    gameState.jobType = null;
+                    addCareerLog("Okulu dondurduğu için Part-Time işinden istifa etti.");
+                    notify("Okul dondurulduğu için Part-Time işinizden istifa ettiniz.", "info");
+                }
+                
+                notify(`Okulunuz donduruldu (Hak: ${2 - gameState.universityFreezeCount}/2). 6 ay içinde geri dönmezseniz otomatik geri döndürüleceksiniz.`, "success");
+                updateUI();
+                saveGame(true);
+            }
+        }
+    };
+
+    document.getElementById('btn-dropout-uni').onclick = () => {
+        if (gameState.isStudent || gameState.universityFrozen) {
+            if (confirm("Üniversiteden ayrılmak istediğinize emin misiniz? Tüm eğitim ilerlemeniz sıfırlanacak ve tekrar kaydolmak için 18 ay beklemeniz gerekecektir.")) {
+                gameState.isStudent = false;
+                gameState.universityFrozen = false;
+                gameState.universityFrozenMonths = 0;
+                gameState.universityFreezeCount = 0;
+                gameState.universityMonths = 0;
+                gameState.monthlyCompletedAcademicTasks = 0;
+                gameState.activeAcademicTasks = [];
+                gameState.universityDropoutCooldown = 18;
+
+                if (gameState.jobType === 'part-time') {
+                    gameState.jobType = null;
+                    addCareerLog("Okuldan ayrıldığı için Part-Time işinden istifa etti.");
+                    notify("Okuldan ayrıldığınız için Part-Time işinizden istifa ettiniz.", "info");
+                }
+
+                notify("Üniversiteden ayrıldınız. İlerlemeniz sıfırlandı ve 18 aylık bekleme süresi başladı.", "success");
+                updateUI();
+                saveGame(true);
+            }
+        }
     };
     
     document.getElementById('btn-buy-diploma').onclick = () => { 
@@ -1140,6 +1280,22 @@ function onNewMonth() {
     checkHRDemands();
 
     if(gameState.jobApplicationCooldown > 0) gameState.jobApplicationCooldown--;
+
+    // Üniversite Dondurma ve Bekleme Sayaçları
+    if (gameState.universityDropoutCooldown > 0) {
+        gameState.universityDropoutCooldown--;
+    }
+    if (gameState.universityFrozen) {
+        gameState.universityFrozenMonths = (gameState.universityFrozenMonths || 0) + 1;
+        if (gameState.universityFrozenMonths >= 6) {
+            gameState.universityFrozen = false;
+            gameState.universityFrozenMonths = 0;
+            gameState.isStudent = true;
+            generateDailyAcademicTasks();
+            notify("Üniversite dondurma süreniz (6 ay) doldu. Okula zorunlu geri dönüş yaptınız!", "success");
+            saveGame(true);
+        }
+    }
 
     // Üniversite Eğitimi
     if(gameState.isStudent && !gameState.hasDiploma) {
@@ -1949,6 +2105,10 @@ function executeBankruptcy(type) {
         gameState.universityMonths = 0;
         gameState.activeAcademicTasks = [];
         gameState.monthlyCompletedAcademicTasks = 0;
+        gameState.universityFrozen = false;
+        gameState.universityFrozenMonths = 0;
+        gameState.universityFreezeCount = 0;
+        gameState.universityDropoutCooldown = 0;
         gameState.balance = 0;
         notify("Tüm haklarınız elinizden alındı. Sıfırdan bir hayata başlıyorsunuz...", "error");
     } 
@@ -2047,6 +2207,8 @@ function updateUI() {
 
     if(gameState.hasDiploma) {
         elm.eduStatus.textContent = "Mezun (Diplomalı)";
+    } else if(gameState.universityFrozen) {
+        elm.eduStatus.textContent = `Donduruldu (${6 - (gameState.universityFrozenMonths || 0)} Ay Kaldı)`;
     } else if(gameState.isStudent) {
         elm.eduStatus.textContent = `Okuyor (${gameState.universityMonths}/24 Ay)`;
     } else {
@@ -2057,21 +2219,63 @@ function updateUI() {
     elm.housingStatus.textContent = gameState.housing === 'hotel' ? `Otel (${gameState.hotelPrice})` : (gameState.housing === 'rented' ? 'Kiralık Ev' : 'Kendi Evi');
     
     // Üniversite UI Güncellemesi
-    if(gameState.universityMonths >= 24 && !gameState.hasDiploma) {
-        document.getElementById('btn-buy-diploma').style.display = 'block';
-        document.getElementById('btn-study-uni').style.display = 'none';
+    const btnFreeze = document.getElementById('btn-freeze-uni');
+    const btnDropout = document.getElementById('btn-dropout-uni');
+    const studentActions = document.getElementById('uni-student-actions');
+    const btnStudyUni = document.getElementById('btn-study-uni');
+    const btnBuyDiploma = document.getElementById('btn-buy-diploma');
+
+    if(gameState.hasDiploma) {
+        if (btnStudyUni) btnStudyUni.style.display = 'none';
+        if (btnBuyDiploma) btnBuyDiploma.style.display = 'none';
+        if (studentActions) studentActions.style.display = 'none';
+    } else if(gameState.universityMonths >= 24) {
+        if (btnBuyDiploma) btnBuyDiploma.style.display = 'block';
+        if (btnStudyUni) btnStudyUni.style.display = 'none';
+        if (studentActions) studentActions.style.display = 'none';
+    } else if(gameState.universityFrozen) {
+        if (btnBuyDiploma) btnBuyDiploma.style.display = 'none';
+        if (btnStudyUni) {
+            btnStudyUni.style.display = 'block';
+            btnStudyUni.disabled = true;
+            btnStudyUni.textContent = `Eğitim Donduruldu (${gameState.universityMonths}/24)`;
+            btnStudyUni.style.background = "rgba(255,255,255,0.05)";
+        }
+        if (studentActions) studentActions.style.display = 'flex';
+        if (btnFreeze) {
+            btnFreeze.textContent = "🔥 Dondurmayı Çöz / Geri Dön";
+            btnFreeze.style.background = "var(--clr-success)";
+            btnFreeze.style.boxShadow = "0 4px 15px rgba(16, 185, 129, 0.4)";
+        }
     } else if(gameState.isStudent) {
-        document.getElementById('btn-study-uni').textContent = `Eğitim Devam Ediyor (${gameState.universityMonths}/24)`;
-        document.getElementById('btn-buy-diploma').style.display = 'none';
-        document.getElementById('btn-study-uni').disabled = true;
-    } else if(gameState.hasDiploma) {
-        document.getElementById('btn-study-uni').style.display = 'none';
-        document.getElementById('btn-buy-diploma').style.display = 'none';
+        if (btnBuyDiploma) btnBuyDiploma.style.display = 'none';
+        if (btnStudyUni) {
+            btnStudyUni.style.display = 'block';
+            btnStudyUni.disabled = true;
+            btnStudyUni.textContent = `Eğitim Devam Ediyor (${gameState.universityMonths}/24)`;
+            btnStudyUni.style.background = "";
+        }
+        if (studentActions) studentActions.style.display = 'flex';
+        if (btnFreeze) {
+            btnFreeze.textContent = `❄️ Okulu Dondur (Kalan Hak: ${2 - (gameState.universityFreezeCount || 0)})`;
+            btnFreeze.style.background = "#f59e0b";
+            btnFreeze.style.boxShadow = "0 4px 15px rgba(245, 158, 11, 0.4)";
+        }
     } else {
-        document.getElementById('btn-buy-diploma').style.display = 'none';
-        document.getElementById('btn-study-uni').style.display = 'block';
-        document.getElementById('btn-study-uni').disabled = false;
-        document.getElementById('btn-study-uni').textContent = "Ücretsiz Kaydol (Aylık Part-Time Çalışırken Burs Alırsın)";
+        if (btnBuyDiploma) btnBuyDiploma.style.display = 'none';
+        if (btnStudyUni) {
+            btnStudyUni.style.display = 'block';
+            if (gameState.universityDropoutCooldown > 0) {
+                btnStudyUni.disabled = true;
+                btnStudyUni.textContent = `Tekrar Kayıt İçin Bekleyin (${gameState.universityDropoutCooldown} Ay)`;
+                btnStudyUni.style.background = "rgba(255,255,255,0.05)";
+            } else {
+                btnStudyUni.disabled = false;
+                btnStudyUni.textContent = "Ücretsiz Kaydol (Aylık Part-Time Çalışırken Burs Alırsın)";
+                btnStudyUni.style.background = "";
+            }
+        }
+        if (studentActions) studentActions.style.display = 'none';
     }
     
     // Academic Tab ve Bölüm Güncellemeleri
@@ -3429,7 +3633,7 @@ window.renderLawsuitsHistory = function() {
         
         html += `<div style="padding:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-left:4px solid ${typeColor}; border-radius:8px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <span style="font-size:0.75rem; color:var(--clr-text-muted);">${law.dateStr}</span>
+                <span style="font-size:0.75rem; color:var(--clr-text-muted);">${normalizeDateStr(law.dateStr)}</span>
                 <span style="font-size:0.8rem; font-weight:bold; color:${typeColor}; background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px;">${law.type}</span>
             </div>
             <div style="font-size:0.85rem; margin-bottom:6px;">
