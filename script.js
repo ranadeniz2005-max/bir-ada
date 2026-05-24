@@ -1045,33 +1045,38 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('job-asgari-cafe').onclick = () => { takeJob('asgari-cafe'); addCareerLog("Ada Kafe İşletmesi'nde Asgari İşçi olarak işe girdi."); };
     document.getElementById('job-asgari-restoran').onclick = () => { takeJob('asgari-restoran'); addCareerLog("Ada Restoran Lokantası'nda Asgari İşçi olarak işe girdi."); };
     document.getElementById('job-asgari-firin').onclick = () => { takeJob('asgari-firin'); addCareerLog("Ada Fırın İşletmesi'nde Asgari İşçi olarak işe girdi."); };
-    document.getElementById('job-asgari-butik').onclick = () => { takeJob('asgari-butik'); addCareerLog("Ada Butik Mağazası'nda Asgari İşçi olarak işe girdi."); };
+    document.getElementById('job-asgari-cafe').onclick = () => { takeJob('asgari-cafe'); addCareerLog("Ada Kafe İşletmesi'nde Asgari İşçi olarak işe girdi."); saveGame(true); };
+    document.getElementById('job-asgari-restoran').onclick = () => { takeJob('asgari-restoran'); addCareerLog("Ada Restoran Lokantası'nda Asgari İşçi olarak işe girdi."); saveGame(true); };
+    document.getElementById('job-asgari-firin').onclick = () => { takeJob('asgari-firin'); addCareerLog("Ada Fırın İşletmesi'nde Asgari İşçi olarak işe girdi."); saveGame(true); };
+    document.getElementById('job-asgari-butik').onclick = () => { takeJob('asgari-butik'); addCareerLog("Ada Butik Mağazası'nde Asgari İşçi olarak işe girdi."); saveGame(true); };
     
     document.getElementById('job-part').onclick = () => { 
         if(!gameState.isStudent) return notify("Üniversiteye kayıtlı bir öğrenci olmadan Part-Time çalışamazsınız!", "error");
         takeJob('part-time'); 
         addCareerLog("Öğrenci Part-Time görevine başladı.");
+        saveGame(true);
     };
-    document.getElementById('job-high').onclick = () => { takeJob('high-level'); addCareerLog("Üst Düzey Yönetici olarak atandı."); };
+    document.getElementById('job-high').onclick = () => { takeJob('high-level'); addCareerLog("Üst Düzey Yönetici olarak atandı."); saveGame(true); };
     document.getElementById('job-resign').onclick = () => { 
         gameState.jobType = null; 
         addCareerLog("Kariyerdeki işinden istifa etti.");
         notify("İstifa ettin."); 
         document.getElementById('job-resign').style.display = 'none'; 
         updateUI(); 
+        saveGame(true);
     };
 
     // Emlak (48 Ay Kilidi Şartı - Aksi halde sadece otelde kalabilir)
     document.getElementById('btn-rent-house').onclick = () => { 
 
         
-        if(gameState.balance >= 7500) { gameState.housing='rented'; notify("Kira kontratı yapıldı."); updateUI(); } 
+        if(gameState.balance >= 7500) { gameState.housing='rented'; notify("Kira kontratı yapıldı."); updateUI(); saveGame(true); } 
     };
     
     document.getElementById('btn-buy-house').onclick = () => { 
 
         
-        if(gameState.balance >= 1500000) { updateBalance(-1500000, 'Ev Satın Alma', false); gameState.housing='owned'; notify("Bir ev satın aldınız."); updateUI(); } 
+        if(gameState.balance >= 1500000) { updateBalance(-1500000, 'Ev Satın Alma', false); gameState.housing='owned'; notify("Bir ev satın aldınız."); updateUI(); saveGame(true); } 
     };
 
     // Adliye / Polis
@@ -1921,6 +1926,7 @@ function takeJob(type) {
     let jobLabels = {'asgari-cafe':'Ada Kafe İşletmesi', 'asgari-butik':'Ada Butik Mağazası', 'asgari-firin':'Ada Fırın İşletmesi', 'asgari-restoran':'Ada Restoran Lokantası', 'part-time':'Part-Time Öğrenci', 'high-level':'Müdür'};
     notify(`İş ataması yapıldı: ${jobLabels[type] || type}`, "success");
     updateUI();
+    saveGame(true);
 }
 
 function sendP2PTransfer() {
@@ -2046,6 +2052,7 @@ function returnToHotel() {
     }
     gameState.housing = 'hotel';
     updateUI();
+    saveGame(true);
 }
 
 
@@ -2096,6 +2103,7 @@ function updateBalance(num, desc, isIncome) {
         gameState.inBankruptcyEvent = true;
         openModal('modal-bankruptcy');
     }
+    saveGame(true);
 }
 
 function executeBankruptcy(type) {
@@ -4166,22 +4174,32 @@ window.renderCityVenuesReal = function() {
         if (workersList.length === 0) { workersList.push(v.defaultWorker); serverWorkers.push(v.defaultWorker); }
         
         let numCustomers = Math.floor(Math.random() * 3) + 1; // 1-3 Müşteri
-        let customerHtml = '';
+        let customerNames = [];
+        if (window.currentlySatVenueId === v.id) {
+            customerNames.push(gameState.username);
+        }
         
-        if (availablePlayers.length === 0) {
-            customerHtml = '<div style="font-size:0.8rem; color:var(--clr-text-muted); padding:5px;">Şu an mekanda başka online oyuncu yok...</div>';
+        for(let i=0; i<numCustomers; i++) {
+            if(availablePlayers.length === 0) break;
+            let randIdx = Math.floor(Math.random() * availablePlayers.length);
+            let pName = availablePlayers.splice(randIdx, 1)[0];
+            customerNames.push(pName);
+        }
+        
+        let customerHtml = '';
+        if (customerNames.length === 0) {
+            customerHtml = '<div style="font-size:0.8rem; color:var(--clr-text-muted); padding:5px;">Şu an mekanda online oyuncu yok...</div>';
         } else {
-            for(let i=0; i<numCustomers; i++) {
-                if(availablePlayers.length === 0) break;
-                // Rastgele bir oyuncu seç
-                let randIdx = Math.floor(Math.random() * availablePlayers.length);
-                let pName = availablePlayers.splice(randIdx, 1)[0];
+            customerNames.forEach(pName => {
+                let isMe = pName === gameState.username;
+                let displayName = isMe ? "Siz" : pName;
+                let btn = isMe ? '' : `<button onclick="sendFriendRequest('${pName}', '${v.id}')" style="background:var(--clr-success); border:none; color:white; border-radius:3px; cursor:pointer;" title="İstek At">➕</button>`;
                 
                 customerHtml += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.4); padding:4px 8px; border-radius:4px; margin-bottom:2px;">
-                    <span>👤 ${pName}</span>
-                    <button onclick="sendFriendRequest('${pName}', '${v.id}')" style="background:var(--clr-success); border:none; color:white; border-radius:3px; cursor:pointer;" title="İstek At">➕</button>
+                    <span>👤 ${displayName}</span>
+                    ${btn}
                 </div>`;
-            }
+            });
         }
 
         // Masaya Otur butonu durumu

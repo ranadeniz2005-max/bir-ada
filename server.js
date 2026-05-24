@@ -280,6 +280,41 @@ function loadLocalDatabase() {
     }
 }
 
+function broadcastAdminPlayerData() {
+    let playerList = [];
+    for (let username in db) {
+        if (username === 'ADMIN_SYSTEM' || username === 'SERVER_TIME' || username === 'SERVER_NEWS') continue;
+        let pData = db[username];
+        
+        let jobStr = pData.jobType ? pData.jobType : "İşsiz";
+        if (pData.businesses && pData.businesses.length > 0) jobStr = "Patron";
+        
+        let housingStr = (pData.inventory && pData.inventory.includes('villa')) ? "Villa" : 
+                        (pData.housing === 'owned' ? "Sahip" : 
+                        (pData.housing === 'rented' ? "Kiralık" : "Otel (Kira)"));
+                        
+        let eduStr = pData.isStudent ? "Okuyor" : (pData.hasDiploma ? "Mezun" : "Yok");
+
+        playerList.push({
+            name: username,
+            age: pData.age || 18,
+            balance: pData.balance || 0,
+            job: jobStr,
+            housing: housingStr,
+            edu: eduStr,
+            jobSkill: pData.jobSkill || 0,
+            socialScore: pData.friends ? pData.friends.length : 0,
+            isOnline: Object.values(players).some(pl => pl.username === username)
+        });
+    }
+    
+    for (let id in players) {
+        if (players[id].isAdmin) {
+            io.to(id).emit('admin_player_data_response', playerList);
+        }
+    }
+}
+
 const MS_PER_PHASE = 960000; // Gerçek Zamanlı (16 Dakika = 1 Faz)
 
 function getCalculatedTime() {
@@ -339,6 +374,7 @@ io.on('connection', (socket) => {
             // Veritabanında kaydı YOK, demek ki yeni oyuncu. İlk kaydını oluştursun diye bildir.
             socket.emit('new_player_setup');
         }
+        broadcastAdminPlayerData();
     });
 
     // Oyuncu oyunu kaydettiğinde
@@ -360,6 +396,7 @@ io.on('connection', (socket) => {
             clientState.debtRequests = serverState.debtRequests || [];
 
             saveDatabaseKey(username, clientState);
+            broadcastAdminPlayerData();
         }
     });
 
@@ -1398,6 +1435,7 @@ io.on('connection', (socket) => {
             console.log(`[-] Kopma: ${players[socket.id].username}`);
             io.emit('broadcast_notification', { msg: `${players[socket.id].username} şehirden ayrıldı.`, type: 'error' });
             delete players[socket.id];
+            broadcastAdminPlayerData();
         }
     });
 });
