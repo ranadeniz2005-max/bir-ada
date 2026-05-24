@@ -114,6 +114,20 @@ function openModal(id) {
         if(typeof renderFriends === 'function') renderFriends();
     }
     if(id === 'modal-city' && typeof renderCityVenues === 'function') renderCityVenues();
+    
+    // Grafikleri yeniden boyutlandır ve çiz
+    if(id === 'modal-bank' && personalChartInstance) {
+        setTimeout(() => {
+            personalChartInstance.resize();
+            personalChartInstance.update();
+        }, 50);
+    }
+    if(id === 'modal-borsa' && marketChartInstance) {
+        setTimeout(() => {
+            marketChartInstance.resize();
+            marketChartInstance.update();
+        }, 50);
+    }
 }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 function switchTab(btnElem, tabId) {
@@ -178,6 +192,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (typeof updateUI === 'function') updateUI();
                 if (typeof updateTimeUI === 'function') updateTimeUI();
                 if (typeof updateSurvivalUI === 'function') updateSurvivalUI();
+                
+                // Grafikleri yüklenen verilerle görünür canvasta başlat
+                initCharts();
                 
                 pendingServerTime = null;
                 pendingSavedState = null;
@@ -936,6 +953,9 @@ function initCharts() {
     // Kişisel Gelir/Gider Grafiği Başlat
     const ctxPersonal = document.getElementById('personalFinanceChart');
     if(ctxPersonal) {
+        if (personalChartInstance) {
+            personalChartInstance.destroy();
+        }
         personalChartInstance = new Chart(ctxPersonal, {
             type: 'line',
             data: {
@@ -952,6 +972,9 @@ function initCharts() {
     // Borsa Piyasa Grafiği Başlat
     const ctxMarket = document.getElementById('marketChart');
     if(ctxMarket) {
+        if (marketChartInstance) {
+            marketChartInstance.destroy();
+        }
         marketChartInstance = new Chart(ctxMarket, {
             type: 'line',
             data: {
