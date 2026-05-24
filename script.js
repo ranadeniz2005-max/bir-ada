@@ -1213,7 +1213,9 @@ function onNewMonth() {
     }
 
     // --- AYLIK FİNANS VE BORSA GRAFİĞİ GÜNCELLEMESİ ---
-    let labelMonth = `${gameState.time.year}.Y ${gameState.time.month}.A`;
+    let mStr = String(gameState.time.month).padStart(2, '0');
+    let yStr = String(gameState.time.year).padStart(4, '0');
+    let labelMonth = `${mStr}.${yStr}`;
     
     // 1) Kişisel Finans Geçmişini Kaydet
     gameState.financeHistory.labels.push(labelMonth);
@@ -1888,7 +1890,9 @@ function returnToHotel() {
 
 
 function addCareerLog(msg) {
-    let ts = `[${gameState.time.year}.Yıl ${gameState.time.month}.Ay]`;
+    let mStr = String(gameState.time.month).padStart(2, '0');
+    let yStr = String(gameState.time.year).padStart(4, '0');
+    let ts = `[${mStr}.${yStr}]`;
     gameState.careerHistory.unshift(`${ts} ${msg}`);
 }
 
@@ -2004,7 +2008,10 @@ function adminDeletePlayer(targetName) {
 }
 
 function addTransaction(type, amount, desc) {
-    const dateStr = `${gameState.time.year}.Y ${gameState.time.month}.A ${gameState.time.day}.G ${['(Sabah)', '(Öğle)', '(Akşam)'][gameState.time.phase]}`;
+    const dStr = String(gameState.time.day).padStart(2, '0');
+    const mStr = String(gameState.time.month).padStart(2, '0');
+    const yStr = String(gameState.time.year).padStart(4, '0');
+    const dateStr = `${dStr}.${mStr}.${yStr} ${['(Sabah)', '(Öğle)', '(Akşam)'][gameState.time.phase]}`;
     gameState.transactions.unshift({ type, amount, desc, dateStr });
     if(gameState.transactions.length > 50) gameState.transactions.pop();
 }
@@ -2193,7 +2200,10 @@ function notify(message, type = 'success') {
     setTimeout(() => { n.style.animation = 'fadeOut 0.4s ease forwards'; setTimeout(() => n.remove(), 400); }, 5000);
 
     // Bildirim Geçmişine ve Okunmamışlara Ekle
-    const dateStr = `${gameState.time.year}.Y ${gameState.time.month}.A ${gameState.time.day}.G ${['(Sabah)', '(Öğle)', '(Akşam)'][gameState.time.phase]}`;
+    const dStr = String(gameState.time.day).padStart(2, '0');
+    const mStr = String(gameState.time.month).padStart(2, '0');
+    const yStr = String(gameState.time.year).padStart(4, '0');
+    const dateStr = `${dStr}.${mStr}.${yStr} ${['(Sabah)', '(Öğle)', '(Akşam)'][gameState.time.phase]}`;
     gameState.notificationHistory.unshift({ message, type, dateStr });
     if(gameState.notificationHistory.length > 30) gameState.notificationHistory.pop();
     

@@ -89,7 +89,10 @@ function addNotification(username, message, type = 'info') {
     
     // Zamanı hesapla
     let t = getCalculatedTime();
-    let dateStr = `${t.year}.Y ${t.month}.A ${t.day}.G (${t.phase === 0 ? 'Sabah' : t.phase === 1 ? 'Öğle' : 'Akşam'})`;
+    let dStr = String(t.day).padStart(2, '0');
+    let mStr = String(t.month).padStart(2, '0');
+    let yStr = String(t.year).padStart(4, '0');
+    let dateStr = `${dStr}.${mStr}.${yStr} (${t.phase === 0 ? 'Sabah' : t.phase === 1 ? 'Öğle' : 'Akşam'})`;
     
     // Bildirimi listeye ekle (Maksimum son 30 bildirimi sakla)
     db[username].notificationHistory.push({
@@ -566,7 +569,10 @@ io.on('connection', (socket) => {
         }
 
         let t = getCalculatedTime();
-        let dateStr = `${t.year}.Y ${t.month}.A ${t.day}.G (${t.phase === 0 ? 'Sabah' : t.phase === 1 ? 'Öğle' : 'Akşam'})`;
+        let dStr = String(t.day).padStart(2, '0');
+        let mStr = String(t.month).padStart(2, '0');
+        let yStr = String(t.year).padStart(4, '0');
+        let dateStr = `${dStr}.${mStr}.${yStr} (${t.phase === 0 ? 'Sabah' : t.phase === 1 ? 'Öğle' : 'Akşam'})`;
 
         if (!db[plaintiff].lawsuits) db[plaintiff].lawsuits = [];
         if (!db[defendant].lawsuits) db[defendant].lawsuits = [];
