@@ -1422,50 +1422,50 @@ function generateDailyAcademicTasks() {
     let targetCount = 3; // Her zaman 3 ders görevi/sınavı aktif bulunsun
     
     let namesRoutine = [
-        "Ödev: Mikroekonomi Analizi",
-        "Proje: Ekonometrik Modelleme",
-        "Ödev: Finansal Raporlama",
-        "Ödev: Para Teorisi ve Politikası",
-        "Proje: Arz-Talep Grafiği Çizimi",
-        "Ödev: Enflasyon Tahmini",
-        "Proje: Portföy Optimizasyonu",
-        "Ödev: Kamu Maliyesi Analizi",
-        "Ödev: Uluslararası İktisat Teorisi",
-        "Ödev: Merkez Bankası Kararları",
-        "Proje: Oyun Teorisi Analizi",
-        "Ödev: Davranışsal İktisat"
+        "Ödev: Yapay Zeka ve Toplum",
+        "Proje: Oyun Tasarımı Atölyesi",
+        "Ödev: Kuantum Fiziğine Giriş",
+        "Ödev: Sosyal Psikoloji ve Davranış",
+        "Proje: Kampüs Botanik Bahçesi",
+        "Ödev: Yaratıcı Yazarlık Denemesi",
+        "Proje: Güneş Enerjili Araç Tasarımı",
+        "Ödev: Mitoloji ve Kültür Tarihi",
+        "Ödev: Siber Güvenlik Analizi",
+        "Proje: Tiyatro ve Drama Çalışması"
     ];
     
     let namesExam = [];
     if (examStatus) {
         if (examStatus.type === 'vize') {
             namesExam = [
-                "SINAV: Mikroiktisat Vizesi",
-                "SINAV: Makroiktisat Vizesi",
-                "SINAV: İktisadi Düşünceler Tarihi Vizesi",
-                "SINAV: Para ve Banka Vizesi"
+                "SINAV: Yapay Zeka Vizesi",
+                "SINAV: Modern Sanat Vizesi",
+                "SINAV: Astronomi ve Kozmoloji Vizesi",
+                "SINAV: Genel Kültür Vizesi"
             ];
         } else {
             namesExam = [
-                "SINAV: Mikroiktisat Finali",
-                "SINAV: Makroiktisat Finali",
-                "SINAV: Ekonometri Finali",
-                "SINAV: Finansal İktisat Finali"
+                "SINAV: Bilgisayar Grafikleri Finali",
+                "SINAV: Sosyal Psikoloji Finali",
+                "SINAV: Genetik Mühendisliği Finali",
+                "SINAV: Felsefe ve Mantık Finali"
             ];
         }
     }
     
     // Aktif sınav haftasına girildiyse eski ödevleri, sınav haftası bittiyse eski sınavları temizle
+    // Ayrıca eski ekonomik oyun tiplerini de temizleyerek yeni oyunların gelmesini sağla
     gameState.activeAcademicTasks = gameState.activeAcademicTasks.filter(t => {
         let isTaskExam = t.isExam;
         let shouldBeExam = !!examStatus;
-        return isTaskExam === shouldBeExam;
+        let isNewType = ['reflex_test', 'simon_says', 'whack_mole', 'tic_tac_toe', 'word_scramble', 'odd_one_out'].includes(t.gameType);
+        return isTaskExam === shouldBeExam && isNewType;
     });
     
     // Sayıyı her zaman targetCount (3) seviyesinde tut
     while (gameState.activeAcademicTasks.length < targetCount) {
         let title = examStatus ? namesExam[Math.floor(Math.random() * namesExam.length)] : namesRoutine[Math.floor(Math.random() * namesRoutine.length)];
-        let gameTypes = ['supply_demand', 'inflation_fight', 'budget_balance', 'opportunity_cost'];
+        let gameTypes = ['reflex_test', 'simon_says', 'whack_mole', 'tic_tac_toe', 'word_scramble', 'odd_one_out'];
         let gameType = gameTypes[Math.floor(Math.random() * gameTypes.length)];
         
         gameState.activeAcademicTasks.push({
@@ -1504,10 +1504,12 @@ function renderAcademicTasks() {
         let examLabel = isExam ? `<span style="color:var(--clr-danger); font-weight:bold;">[SINAV]</span>` : '';
         
         let typeInfo = '';
-        if (t.gameType === 'supply_demand') typeInfo = 'Ekonomi: Arz-Talep Dengesi';
-        else if (t.gameType === 'inflation_fight') typeInfo = 'Ekonomi: Enflasyonla Mücadele';
-        else if (t.gameType === 'budget_balance') typeInfo = 'Ekonomi: Kamu Bütçesi Planlama';
-        else if (t.gameType === 'opportunity_cost') typeInfo = 'Ekonomi: Fırsat Maliyeti Optimizasyonu';
+        if (t.gameType === 'reflex_test') typeInfo = 'Dikkat: Hızlı Refleks Testi';
+        else if (t.gameType === 'simon_says') typeInfo = 'Hafıza: Renk Dizisi Hatırlama';
+        else if (t.gameType === 'whack_mole') typeInfo = 'Refleks: Köstebek Vurmaca';
+        else if (t.gameType === 'tic_tac_toe') typeInfo = 'Zeka: X-O-X Oyunu';
+        else if (t.gameType === 'word_scramble') typeInfo = 'Kelime: Harfleri Düzenleme';
+        else if (t.gameType === 'odd_one_out') typeInfo = 'Dikkat: Farklı Emojiyi Bul';
         
         html += `
         <div style="background:${cardColor}; border-left:4px solid ${borderClr}; padding:12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 8px;">
@@ -2741,398 +2743,696 @@ window.startAcademicMinigame = function(taskId) {
     container.innerHTML = '';
     ui.style.display = 'flex';
 
-    if(task.gameType === 'supply_demand') {
-        let targetPrice = Math.floor(Math.random() * 50) + 25; // 25-75 arası denge fiyatı
-        let playerPrice = Math.random() > 0.5 ? 10 : 90;
-        let margin = task.isExam ? 1 : 3;
+    window.academicIntervals = window.academicIntervals || [];
+    window.academicTimeouts = window.academicTimeouts || [];
+    
+    // Temizlik
+    window.academicIntervals.forEach(clearInterval);
+    window.academicIntervals = [];
+    window.academicTimeouts.forEach(clearTimeout);
+    window.academicTimeouts = [];
 
-        function getSDValues(price) {
-            let demand = Math.round(Math.max(0, Math.min(100, 100 - (price - targetPrice + 50))));
-            let supply = Math.round(Math.max(0, Math.min(100, price - targetPrice + 50)));
-            return { demand, supply };
-        }
-
-        function updateSDUI() {
-            let vals = getSDValues(playerPrice);
-            document.getElementById('sd-price').textContent = playerPrice + ' 🪙';
-            document.getElementById('sd-demand').textContent = vals.demand + ' adet';
-            document.getElementById('sd-supply').textContent = vals.supply + ' adet';
-            document.getElementById('sd-demand-bar').style.width = vals.demand + '%';
-            document.getElementById('sd-supply-bar').style.width = vals.supply + '%';
-            
-            let hint = '';
-            if (playerPrice > targetPrice + margin) {
-                hint = '<span style="color:#ef4444; font-weight:bold;">⚠️ Fiyat çok yüksek! Talep yetersiz, stok birikiyor.</span>';
-            } else if (playerPrice < targetPrice - margin) {
-                hint = '<span style="color:#ef4444; font-weight:bold;">⚠️ Fiyat çok düşük! Yoğun talep var ancak üretici mal satmıyor.</span>';
-            } else {
-                hint = '<span style="color:#10b981; font-weight:bold;">Piyasa Dengede! (Dengeyi Kur butonuna basabilirsin) ✅</span>';
-            }
-            document.getElementById('sd-hint').innerHTML = hint;
-        }
-
+    if(task.gameType === 'reflex_test') {
+        let limit = task.isExam ? 320 : 380;
+        let state = 'idle'; // idle, waiting, green
+        
         container.innerHTML = `
-            <p style="color:white; text-align:center; font-size:0.95rem; margin-bottom:15px; width:100%;">Fiyatı ayarlayarak <strong>Arz (Kırmızı)</strong> ve <strong>Talep (Mavi)</strong> miktarlarını denge fiyatında eşitle!</p>
-            <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:10px; width:100%; margin-bottom:15px;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                    <span>Ürün Fiyatı:</span>
-                    <strong id="sd-price" style="color:var(--clr-warning); font-size:1.2rem;">${playerPrice} 🪙</strong>
-                </div>
-                
-                <div style="margin-bottom:12px;">
-                    <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px;">
-                        <span>📉 Alıcı Talebi:</span>
-                        <span id="sd-demand" style="font-weight:bold;"></span>
-                    </div>
-                    <div style="width:100%; height:15px; background:rgba(255,255,255,0.1); border-radius:8px; overflow:hidden;">
-                        <div id="sd-demand-bar" style="height:100%; background:#3b82f6; width:0%;"></div>
-                    </div>
-                </div>
-
-                <div style="margin-bottom:12px;">
-                    <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:4px;">
-                        <span>📈 Satıcı Arzı:</span>
-                        <span id="sd-supply" style="font-weight:bold;"></span>
-                    </div>
-                    <div style="width:100%; height:15px; background:rgba(255,255,255,0.1); border-radius:8px; overflow:hidden;">
-                        <div id="sd-supply-bar" style="height:100%; background:#ef4444; width:0%;"></div>
-                    </div>
-                </div>
-                
-                <div id="sd-hint" style="font-size:0.85rem; text-align:center; min-height:20px; margin-top:10px;"></div>
+            <p style="color:white; text-align:center; font-size:0.95rem; margin-bottom:15px; width:100%;">
+                Ekran <strong>YEŞİL</strong> olunca hemen tıklayın! (Hedef: &lt; <strong>${limit}ms</strong>)
+            </p>
+            <div id="reflex-box" style="width:100%; height:200px; background:rgba(239,68,68,0.15); border:2px dashed #ef4444; border-radius:12px; display:flex; flex-direction:column; justify-content:center; align-items:center; cursor:pointer; user-select:none; transition: all 0.2s;">
+                <span id="reflex-text" style="font-size:1.5rem; font-weight:bold; color:#ef4444;">BAŞLAMAK İÇİN TIKLA</span>
+                <span id="reflex-subtext" style="font-size:0.85rem; margin-top:10px; opacity:0.7;">(Kırmızıda bekleyin, yeşil olunca basın)</span>
             </div>
-            
-            <div style="display:flex; gap:15px; width:100%; justify-content:center; margin-bottom:15px;">
-                <button id="sd-btn-down" class="btn-secondary" style="padding:10px 20px; font-size:1.1rem; flex:1;">⬇️ Fiyatı Düşür</button>
-                <button id="sd-btn-up" class="btn-secondary" style="padding:10px 20px; font-size:1.1rem; flex:1;">⬆️ Fiyatı Artır</button>
-            </div>
-            
-            <button id="sd-btn-submit" class="btn-primary" style="width:100%; padding:12px; font-size:1.1rem; background:var(--clr-success);">Dengeyi Kur</button>
+            <div id="reflex-result" style="margin-top:15px; font-weight:bold; font-size:1.1rem; min-height:24px; text-align:center;"></div>
         `;
         
-        setTimeout(updateSDUI, 50);
+        let reflexBox = document.getElementById('reflex-box');
+        let reflexText = document.getElementById('reflex-text');
+        let reflexResult = document.getElementById('reflex-result');
+        let startTime = 0;
+        let runTimeout = null;
         
-        document.getElementById('sd-btn-down').onclick = function() {
-            if (playerPrice > 1) { playerPrice -= 1; updateSDUI(); }
-        };
-        document.getElementById('sd-btn-up').onclick = function() {
-            if (playerPrice < 150) { playerPrice += 1; updateSDUI(); }
-        };
-        document.getElementById('sd-btn-submit').onclick = function() {
-            if (Math.abs(playerPrice - targetPrice) <= margin) {
-                gameWon = true;
-                this.style.background = 'var(--clr-success)';
-                this.textContent = 'DENGE SAĞLANDI! UYGULANIYOR...';
-                setTimeout(winMinigame, 500);
-            } else {
-                notify("Hatalı Fiyat! Piyasa henüz dengede değil.", "error");
-            }
-        };
-    }
-    else if(task.gameType === 'inflation_fight') {
-        let interestRate = 5.0;
-        let targetMinInf = task.isExam ? 3.5 : 3.0;
-        let targetMaxInf = task.isExam ? 5.5 : 7.0;
-        let maxUnemp = task.isExam ? 8.0 : 10.0;
-
-        function getInflationStats(rate) {
-            let inf = Math.max(1.5, 18.0 - (rate - 5.0) * 1.3);
-            let unemp = Math.max(3.0, 4.0 + (rate - 5.0) * 0.5);
-            return { inf: parseFloat(inf.toFixed(1)), unemp: parseFloat(unemp.toFixed(1)) };
+        function startRound() {
+            if (!minigameActive) return;
+            state = 'waiting';
+            reflexBox.style.background = 'rgba(239,68,68,0.15)';
+            reflexBox.style.borderColor = '#ef4444';
+            reflexText.style.color = '#ef4444';
+            reflexText.textContent = 'KIRMIZIDA BEKLEYİN...';
+            
+            let delay = Math.random() * 2000 + 1500; // 1.5s - 3.5s
+            
+            runTimeout = setTimeout(() => {
+                if (!minigameActive) return;
+                state = 'green';
+                reflexBox.style.background = 'rgba(16,185,129,0.3)';
+                reflexBox.style.borderColor = '#10b981';
+                reflexText.style.color = '#10b981';
+                reflexText.textContent = 'ŞİMDİ TIKLA!!!';
+                startTime = Date.now();
+            }, delay);
+            window.academicTimeouts.push(runTimeout);
         }
-
-        function updateInflationUI() {
-            let stats = getInflationStats(interestRate);
-            document.getElementById('inf-rate').textContent = interestRate.toFixed(1) + '%';
-            document.getElementById('inf-val').textContent = stats.inf + '%';
-            document.getElementById('inf-unemp').textContent = stats.unemp + '%';
-            
-            let infStatus = '';
-            if (stats.inf > targetMaxInf) {
-                infStatus = '<span style="color:#ef4444; font-weight:bold;">⚠️ Yüksek Enflasyon! (Para Değersizleşiyor)</span>';
-            } else if (stats.inf < targetMinInf) {
-                infStatus = '<span style="color:#3b82f6; font-weight:bold;">⚠️ Deflasyon Riski! (Ekonomi Durgunlaşıyor)</span>';
-            } else {
-                infStatus = '<span style="color:#10b981; font-weight:bold;">Enflasyon Hedefte! ✅</span>';
-            }
-            
-            let unempStatus = '';
-            if (stats.unemp > maxUnemp) {
-                unempStatus = `<span style="color:#ef4444; font-weight:bold;">⚠️ Kritik İşsizlik Oranı! (Maks: %${maxUnemp})</span>`;
-            } else {
-                unempStatus = 'İşsizlik Oranı Güvenli Bölgede ✅';
-            }
-            
-            document.getElementById('inf-status').innerHTML = `${infStatus}<br>${unempStatus}`;
-        }
-
-        container.innerHTML = `
-            <p style="color:white; text-align:center; font-size:0.95rem; margin-bottom:15px; width:100%;">Faiz oranını değiştirerek enflasyonu <strong>%${targetMinInf}-%${targetMaxInf}</strong> arasına çek, işsizliği <strong>%${maxUnemp}</strong> altında tut!</p>
-            <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:10px; width:100%; margin-bottom:15px;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">
-                    <span>🏛️ Politika Faiz Oranı:</span>
-                    <strong id="inf-rate" style="color:var(--clr-warning); font-size:1.2rem;">5.0%</strong>
-                </div>
-                
-                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                    <span>💸 Yıllık Enflasyon Oranı:</span>
-                    <strong id="inf-val" style="color:#ef4444; font-size:1.1rem;">18.0%</strong>
-                </div>
-
-                <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                    <span>👥 İşsizlik Oranı:</span>
-                    <strong id="inf-unemp" style="color:#3b82f6; font-size:1.1rem;">4.0%</strong>
-                </div>
-                
-                <div id="inf-status" style="font-size:0.85rem; text-align:center; min-height:40px; margin-top:10px; background:rgba(255,255,255,0.05); padding:8px; border-radius:5px; line-height:1.4;"></div>
-            </div>
-            
-            <div style="display:flex; gap:15px; width:100%; justify-content:center; margin-bottom:15px;">
-                <button id="inf-btn-down" class="btn-secondary" style="padding:10px 20px; font-size:1.1rem; flex:1;">⬇️ Faizi Düşür (-1%)</button>
-                <button id="inf-btn-up" class="btn-secondary" style="padding:10px 20px; font-size:1.1rem; flex:1;">⬆️ Faizi Artır (+1%)</button>
-            </div>
-            
-            <button id="inf-btn-submit" class="btn-primary" style="width:100%; padding:12px; font-size:1.1rem; background:var(--clr-success);">Politikayı Uygula</button>
-        `;
         
-        setTimeout(updateInflationUI, 50);
-
-        document.getElementById('inf-btn-down').onclick = function() {
-            if (interestRate > 0) { interestRate -= 1.0; updateInflationUI(); }
-        };
-        document.getElementById('inf-btn-up').onclick = function() {
-            if (interestRate < 25.0) { interestRate += 1.0; updateInflationUI(); }
-        };
-        document.getElementById('inf-btn-submit').onclick = function() {
-            let stats = getInflationStats(interestRate);
-            if (stats.inf >= targetMinInf && stats.inf <= targetMaxInf && stats.unemp <= maxUnemp) {
-                gameWon = true;
-                this.style.background = 'var(--clr-success)';
-                this.textContent = 'POLİTİKA BAŞARILI! YÜRÜRLÜKTE...';
-                setTimeout(winMinigame, 500);
-            } else {
-                if (stats.inf > targetMaxInf) notify("Başarısız: Enflasyon hala çok yüksek! Faizi artırmalısın.", "error");
-                else if (stats.inf < targetMinInf) notify("Başarısız: Deflasyon riski oluştu, ekonomi durgun! Faizi düşürmelisin.", "error");
-                else if (stats.unemp > maxUnemp) notify(`Başarısız: İşsizlik sınırı aşıldı (%${maxUnemp})! Faizi düşürerek ekonomiyi canlandır.`, "error");
-            }
-        };
-    }
-    else if(task.gameType === 'budget_balance') {
-        let opList = [
-            { id: 0, text: "Gelir Vergisini Artır", budget: 3000, happiness: -15, active: false },
-            { id: 1, text: "Lüks Tüketim Vergisi Getir", budget: 2500, happiness: -5, active: false },
-            { id: 2, text: "Eğitim Bütçesini Kıs", budget: 1500, happiness: -20, active: false },
-            { id: 3, text: "Kamuda Tasarruf Yap", budget: 2000, happiness: -5, active: false },
-            { id: 4, text: "Altyapı Yatırımlarını Durdur", budget: 1000, happiness: -10, active: false }
-        ];
-        let minHapp = task.isExam ? 70 : 60;
-
-        function updateBudgetUI() {
-            let currentBudget = -5000;
-            let currentHapp = 85;
+        reflexBox.onclick = function() {
+            if (gameWon) return;
             
-            opList.forEach(o => {
-                if (o.active) {
-                    currentBudget += o.budget;
-                    currentHapp += o.happiness;
+            if (state === 'idle') {
+                startRound();
+            } else if (state === 'waiting') {
+                if (runTimeout) clearTimeout(runTimeout);
+                state = 'idle';
+                reflexResult.style.color = '#ef4444';
+                reflexResult.textContent = 'ERKEN TIKLADIN! Sıfırlanıyor...';
+                reflexText.textContent = 'BAŞLAMAK İÇİN TIKLA';
+                reflexBox.style.background = 'rgba(255,255,255,0.05)';
+                reflexBox.style.borderColor = 'rgba(255,255,255,0.1)';
+                
+                let resetT = setTimeout(startRound, 1000);
+                window.academicTimeouts.push(resetT);
+            } else if (state === 'green') {
+                let diff = Date.now() - startTime;
+                state = 'idle';
+                if (diff <= limit) {
+                    gameWon = true;
+                    reflexResult.style.color = '#10b981';
+                    reflexResult.textContent = `BAŞARILI! Süre: ${diff}ms`;
+                    reflexBox.style.background = 'rgba(16,185,129,0.5)';
+                    reflexBox.style.borderColor = '#10b981';
+                    reflexText.textContent = 'TEBRİKLER!';
+                    setTimeout(winMinigame, 600);
+                } else {
+                    reflexResult.style.color = '#fbbf24';
+                    reflexResult.textContent = `Çok yavaş! Süre: ${diff}ms (Limit: ${limit}ms)`;
+                    reflexText.textContent = 'YENİDEN DENENİYOR...';
+                    
+                    let resetT = setTimeout(startRound, 1200);
+                    window.academicTimeouts.push(resetT);
                 }
-            });
-            
-            document.getElementById('bb-budget').textContent = (currentBudget >= 0 ? '+' : '') + currentBudget.toLocaleString('tr-TR') + ' 🪙';
-            document.getElementById('bb-budget').style.color = currentBudget >= 0 ? 'var(--clr-success)' : '#ef4444';
-            
-            document.getElementById('bb-happ').textContent = currentHapp + '%';
-            document.getElementById('bb-happ').style.color = currentHapp >= minHapp ? 'var(--clr-success)' : '#ef4444';
-            
-            let status = '';
-            if (currentBudget < 0) {
-                status += '<span style="color:#ef4444; font-weight:bold;">⚠️ Bütçe Açığı Var! Geliri artırmalı veya tasarruf yapmalısın.</span><br>';
-            } else {
-                status += '<span style="color:#10b981; font-weight:bold;">Bütçe Dengelendi! ✅</span><br>';
             }
-            
-            if (currentHapp < minHapp) {
-                status += `<span style="color:#ef4444; font-weight:bold;">⚠️ Halk Memnuniyeti Çok Düşük! (En az %${minHapp} olmalı)</span>`;
-            } else {
-                status += 'Halk Memnuniyeti Güvenli Bölgede ✅';
-            }
-            
-            document.getElementById('bb-status').innerHTML = status;
-        }
-
+        };
+    }
+    else if(task.gameType === 'simon_says') {
+        let sequence = [];
+        let playerSequence = [];
+        let targetLength = task.isExam ? 5 : 4;
+        let userCanClick = false;
+        
         container.innerHTML = `
-            <p style="color:white; text-align:center; font-size:0.95rem; margin-bottom:15px; width:100%;">Bütçe açığını kapat. Halk memnuniyetini <strong>%${minHapp}</strong> üzerinde tutarken bütçeyi pozitife çıkar!</p>
-            <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:10px; width:100%; margin-bottom:15px;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                    <span>📊 Devlet Bütçe Dengesi:</span>
-                    <strong id="bb-budget" style="font-size:1.1rem;">-5.000 🪙</strong>
-                </div>
-
-                <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                    <span>😊 Halk Memnuniyeti (Moral):</span>
-                    <strong id="bb-happ" style="font-size:1.1rem;">85%</strong>
-                </div>
-                
-                <div id="bb-status" style="font-size:0.85rem; text-align:center; min-height:40px; margin-top:10px; background:rgba(255,255,255,0.05); padding:8px; border-radius:5px; line-height:1.4;"></div>
+            <p style="color:white; text-align:center; font-size:0.95rem; margin-bottom:15px; width:100%;">
+                Yanan butonların sırasını izleyin ve aynı sırayla tıklayın!
+            </p>
+            <div id="simon-status" style="font-size:1.1rem; font-weight:bold; color:#fbbf24; margin-bottom:15px; text-align:center; min-height:24px;">Hazırlanıyor...</div>
+            <div id="simon-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:15px; width:220px; height:220px; margin:0 auto 15px;">
+                <button id="simon-btn-0" data-idx="0" style="background:#10b981; opacity:0.4; border-radius:15px; width:100px; height:100px; transition:all 0.15s; border: 1px solid rgba(255,255,255,0.1); box-shadow:none; transform:none;"></button>
+                <button id="simon-btn-1" data-idx="1" style="background:#ef4444; opacity:0.4; border-radius:15px; width:100px; height:100px; transition:all 0.15s; border: 1px solid rgba(255,255,255,0.1); box-shadow:none; transform:none;"></button>
+                <button id="simon-btn-2" data-idx="2" style="background:#fbbf24; opacity:0.4; border-radius:15px; width:100px; height:100px; transition:all 0.15s; border: 1px solid rgba(255,255,255,0.1); box-shadow:none; transform:none;"></button>
+                <button id="simon-btn-3" data-idx="3" style="background:#3b82f6; opacity:0.4; border-radius:15px; width:100px; height:100px; transition:all 0.15s; border: 1px solid rgba(255,255,255,0.1); box-shadow:none; transform:none;"></button>
             </div>
+        `;
+        
+        let simonStatus = document.getElementById('simon-status');
+        let colors = ['#10b981', '#ef4444', '#fbbf24', '#3b82f6'];
+        
+        function flashButton(idx) {
+            let btn = document.getElementById(`simon-btn-${idx}`);
+            if (!btn) return;
+            btn.style.opacity = '1.0';
+            btn.style.transform = 'scale(1.05)';
+            btn.style.boxShadow = `0 0 20px ${colors[idx]}`;
             
-            <div id="bb-options" style="display:flex; flex-direction:column; gap:8px; width:100%; margin-bottom:15px; max-height:220px; overflow-y:auto;">
-                ${opList.map(o => `
-                    <button id="bb-opt-${o.id}" class="btn-secondary" style="display:flex; justify-content:space-between; align-items:center; text-align:left; padding:10px 15px; font-size:0.85rem; width:100%; border: 1px solid rgba(255,255,255,0.1);">
-                        <span>${o.text}</span>
-                        <span style="font-size:0.75rem; opacity:0.8; text-align:right;">Bütçe: +${o.budget} | Memnuniyet: ${o.happiness}%</span>
-                    </button>
+            let flashTimeout = setTimeout(() => {
+                if (!minigameActive) return;
+                btn.style.opacity = '0.4';
+                btn.style.transform = 'none';
+                btn.style.boxShadow = 'none';
+            }, 400);
+            window.academicTimeouts.push(flashTimeout);
+        }
+        
+        function generateSequence() {
+            sequence = [];
+            playerSequence = [];
+            for (let i = 0; i < targetLength; i++) {
+                sequence.push(Math.floor(Math.random() * 4));
+            }
+        }
+        
+        function playSequence() {
+            if (!minigameActive || gameWon) return;
+            userCanClick = false;
+            playerSequence = [];
+            simonStatus.style.color = '#fbbf24';
+            simonStatus.textContent = 'Işıkları İzle...';
+            
+            sequence.forEach((colorIdx, stepIndex) => {
+                let stepTimeout = setTimeout(() => {
+                    if (!minigameActive || gameWon) return;
+                    flashButton(colorIdx);
+                    
+                    if (stepIndex === sequence.length - 1) {
+                        let enableTimeout = setTimeout(() => {
+                            if (!minigameActive) return;
+                            userCanClick = true;
+                            simonStatus.style.color = '#60a5fa';
+                            simonStatus.textContent = 'Sıra Sende! Girin...';
+                        }, 500);
+                        window.academicTimeouts.push(enableTimeout);
+                    }
+                }, stepIndex * 800 + 400);
+                window.academicTimeouts.push(stepTimeout);
+            });
+        }
+        
+        function handleUserClick(idx) {
+            if (!userCanClick || gameWon) return;
+            flashButton(idx);
+            playerSequence.push(idx);
+            
+            if (idx !== sequence[playerSequence.length - 1]) {
+                userCanClick = false;
+                simonStatus.style.color = '#ef4444';
+                simonStatus.textContent = 'Hatalı Sıra! Tekrar oynatılıyor...';
+                
+                let replayTimeout = setTimeout(() => {
+                    if (!minigameActive) return;
+                    playSequence();
+                }, 1200);
+                window.academicTimeouts.push(replayTimeout);
+            } else {
+                if (playerSequence.length === sequence.length) {
+                    userCanClick = false;
+                    gameWon = true;
+                    simonStatus.style.color = '#10b981';
+                    simonStatus.textContent = 'TEBRİKLER! BAŞARDIN.';
+                    setTimeout(winMinigame, 600);
+                }
+            }
+        }
+        
+        for (let i = 0; i < 4; i++) {
+            let btn = document.getElementById(`simon-btn-${i}`);
+            if(btn) {
+                btn.onclick = function() {
+                    handleUserClick(i);
+                };
+            }
+        }
+        
+        generateSequence();
+        let startTimeout = setTimeout(playSequence, 800);
+        window.academicTimeouts.push(startTimeout);
+    }
+    else if(task.gameType === 'whack_mole') {
+        let requiredHits = task.isExam ? 7 : 5;
+        let currentHits = 0;
+        let timeLeft = 15;
+        let moleInterval = null;
+        let countdownInterval = null;
+        let activeMoleCell = -1;
+        
+        container.innerHTML = `
+            <p style="color:white; text-align:center; font-size:0.95rem; margin-bottom:15px; width:100%;">
+                Hızla beliren <strong>🐹 köstebekleri</strong> vurarak puan kazan! (Süre: 15 saniye)
+            </p>
+            <div style="display:flex; justify-content:space-between; width:100%; max-width:300px; margin:0 auto 15px; font-weight:bold; font-size:1.1rem;">
+                <span style="color:#10b981;">Skor: <span id="wm-hits">0</span> / ${requiredHits}</span>
+                <span style="color:#ef4444;">Kalan Süre: <span id="wm-timer">15</span>s</span>
+            </div>
+            <div id="wm-grid" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; width:220px; height:220px; margin:0 auto;">
+                ${Array.from({length: 9}).map((_, i) => `
+                    <div id="wm-cell-${i}" data-idx="${i}" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:50%; width:64px; height:64px; display:flex; justify-content:center; align-items:center; cursor:pointer; font-size:2.2rem; user-select:none; transition:background 0.2s;">
+                    </div>
                 `).join('')}
             </div>
-            
-            <button id="bb-btn-submit" class="btn-primary" style="width:100%; padding:12px; font-size:1.1rem; background:var(--clr-success);">Bütçeyi Onayla</button>
         `;
         
-        setTimeout(updateBudgetUI, 50);
-
-        opList.forEach(o => {
-            document.getElementById(`bb-opt-${o.id}`).onclick = function() {
-                o.active = !o.active;
-                if(o.active) {
-                    this.style.background = 'rgba(59, 130, 246, 0.2)';
-                    this.style.borderColor = '#3b82f6';
-                } else {
-                    this.style.background = 'var(--clr-primary)';
-                    this.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+        let hitsSpan = document.getElementById('wm-hits');
+        let timerSpan = document.getElementById('wm-timer');
+        
+        function hideMole() {
+            if (activeMoleCell !== -1) {
+                let cell = document.getElementById(`wm-cell-${activeMoleCell}`);
+                if (cell) {
+                    cell.textContent = '';
+                    cell.style.background = 'rgba(255,255,255,0.05)';
                 }
-                updateBudgetUI();
-            };
-        });
-
-        document.getElementById('bb-btn-submit').onclick = function() {
-            let currentBudget = -5000;
-            let currentHapp = 85;
-            opList.forEach(o => {
-                if (o.active) {
-                    currentBudget += o.budget;
-                    currentHapp += o.happiness;
-                }
-            });
-
-            if (currentBudget >= 0 && currentHapp >= minHapp) {
-                gameWon = true;
-                this.style.background = 'var(--clr-success)';
-                this.textContent = 'KABUL EDİLDİ! ONAYLANDI...';
-                setTimeout(winMinigame, 500);
-            } else {
-                if (currentBudget < 0) notify("Başarısız: Bütçe açığı kapatılamadı!", "error");
-                else if (currentHapp < minHapp) notify(`Başarısız: Halk isyanda, memnuniyet %${minHapp} altında!`, "error");
+                activeMoleCell = -1;
             }
-        };
-    }
-    else if(task.gameType === 'opportunity_cost') {
-        let opProj = [
-            { id: 0, name: "A: Baraj İnşaatı", cost: 35, profit: 65, selected: false },
-            { id: 1, name: "B: Teknoloji Ar-Ge", cost: 45, profit: 85, selected: false },
-            { id: 2, name: "C: Turizm Altyapısı", cost: 25, profit: 40, selected: false },
-            { id: 3, name: "D: Tarım Desteği", cost: 15, profit: 25, selected: false },
-            { id: 4, name: "E: Eğitim Reformu", cost: 10, profit: 15, selected: false }
-        ];
-        let budgetLimit = 100;
-        let targetProfit = task.isExam ? 170 : 150;
-
-        function updateOCUI() {
-            let currentCost = 0;
-            let currentProfit = 0;
-            
-            opProj.forEach(p => {
-                if (p.selected) {
-                    currentCost += p.cost;
-                    currentProfit += p.profit;
-                }
-            });
-            
-            document.getElementById('oc-cost').textContent = currentCost + ' / ' + budgetLimit;
-            document.getElementById('oc-cost').style.color = currentCost <= budgetLimit ? 'var(--clr-success)' : '#ef4444';
-            
-            document.getElementById('oc-profit').textContent = currentProfit + ' / ' + targetProfit;
-            document.getElementById('oc-profit').style.color = currentProfit >= targetProfit ? 'var(--clr-success)' : 'var(--clr-warning)';
-            
-            let status = '';
-            if (currentCost > budgetLimit) {
-                status += `<span style="color:#ef4444; font-weight:bold;">⚠️ Bütçe Sınırı Aşıldı! (${currentCost - budgetLimit}M fazla)</span><br>`;
-            } else {
-                status += 'Bütçe Sınırı Aşılmadı ✅<br>';
-            }
-            
-            if (currentProfit < targetProfit) {
-                status += `<span style="color:var(--clr-warning); font-weight:bold;">Hedef Kazanç Sağlanamadı (Gereken: ${targetProfit}M)</span>`;
-            } else {
-                status += 'Hedef Kazanç Sağlandı ✅';
-            }
-            
-            document.getElementById('oc-status').innerHTML = status;
         }
-
-        container.innerHTML = `
-            <p style="color:white; text-align:center; font-size:0.95rem; margin-bottom:15px; width:100%;">Bütçeyi (${budgetLimit}M) aşmadan en yüksek getirili projeleri seçip en az <strong>${targetProfit}M</strong> getiri sağla!</p>
-            <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:10px; width:100%; margin-bottom:15px;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                    <span>💰 Toplam Yatırım Maliyeti:</span>
-                    <strong id="oc-cost" style="font-size:1.1rem;">0 / 100</strong>
-                </div>
-
-                <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                    <span>📈 Beklenen Toplam Getiri:</span>
-                    <strong id="oc-profit" style="font-size:1.1rem;">0 / ${targetProfit}</strong>
-                </div>
-                
-                <div id="oc-status" style="font-size:0.85rem; text-align:center; min-height:40px; margin-top:10px; background:rgba(255,255,255,0.05); padding:8px; border-radius:5px; line-height:1.4;"></div>
-            </div>
+        
+        function showMole() {
+            hideMole();
+            if (gameWon || timeLeft <= 0 || !minigameActive) return;
             
-            <div id="oc-options" style="display:flex; flex-direction:column; gap:8px; width:100%; margin-bottom:15px; max-height:220px; overflow-y:auto;">
-                ${opProj.map(p => `
-                    <button id="oc-proj-${p.id}" class="btn-secondary" style="display:flex; justify-content:space-between; align-items:center; text-align:left; padding:10px 15px; font-size:0.85rem; width:100%; border: 1px solid rgba(255,255,255,0.1);">
-                        <span>${p.name}</span>
-                        <span style="font-size:0.8rem; opacity:0.8;">Maliyet: ${p.cost}M | Getiri: ${p.profit}M</span>
-                    </button>
+            let randCell = Math.floor(Math.random() * 9);
+            activeMoleCell = randCell;
+            
+            let cell = document.getElementById(`wm-cell-${randCell}`);
+            if (cell) {
+                cell.textContent = '🐹';
+                cell.style.background = 'rgba(245,158,11,0.2)';
+            }
+        }
+        
+        for (let i = 0; i < 9; i++) {
+            let cell = document.getElementById(`wm-cell-${i}`);
+            if(cell) {
+                cell.onclick = function() {
+                    if (gameWon || timeLeft <= 0 || !minigameActive) return;
+                    let cellIdx = parseInt(this.dataset.idx);
+                    
+                    if (cellIdx === activeMoleCell) {
+                        currentHits++;
+                        hitsSpan.textContent = currentHits;
+                        hideMole();
+                        
+                        showMole();
+                        
+                        if (currentHits >= requiredHits) {
+                            gameWon = true;
+                            clearInterval(moleInterval);
+                            clearInterval(countdownInterval);
+                            hitsSpan.style.color = '#10b981';
+                            setTimeout(winMinigame, 600);
+                        }
+                    }
+                };
+            }
+        }
+        
+        let moleSpeed = task.isExam ? 750 : 1000;
+        showMole();
+        
+        moleInterval = setInterval(() => {
+            if (!minigameActive || gameWon) { clearInterval(moleInterval); return; }
+            showMole();
+        }, moleSpeed);
+        window.academicIntervals.push(moleInterval);
+        
+        countdownInterval = setInterval(() => {
+            if (!minigameActive || gameWon) { clearInterval(countdownInterval); return; }
+            timeLeft--;
+            timerSpan.textContent = timeLeft;
+            
+            if (timeLeft <= 0) {
+                clearInterval(countdownInterval);
+                clearInterval(moleInterval);
+                notify("Zaman doldu! Köstebek avını başaramadınız.", "error");
+                
+                setTimeout(() => {
+                    if (!minigameActive) return;
+                    startAcademicMinigame(taskId);
+                }, 1000);
+            }
+        }, 1000);
+        window.academicIntervals.push(countdownInterval);
+    }
+    else if(task.gameType === 'tic_tac_toe') {
+        let board = ["", "", "", "", "", "", "", "", ""];
+        let isPlayerTurn = true;
+        let aiThinking = false;
+        
+        container.innerHTML = `
+            <p style="color:white; text-align:center; font-size:0.95rem; margin-bottom:15px; width:100%;">
+                Sanal rakibe karşı X-O-X! En azından <strong>BERABERE</strong> kalmalısın veya <strong>KAZANMALISIN</strong>.
+            </p>
+            <div id="ttt-status" style="font-size:1.15rem; font-weight:bold; color:#60a5fa; margin-bottom:15px; text-align:center; min-height:24px;">Senin Sıran (X)</div>
+            <div id="ttt-grid" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; width:260px; height:260px; margin:0 auto;">
+                ${Array.from({length: 9}).map((_, i) => `
+                    <div id="ttt-cell-${i}" data-idx="${i}" style="background:rgba(255,255,255,0.05); border:2px solid rgba(255,255,255,0.1); border-radius:10px; display:flex; justify-content:center; align-items:center; cursor:pointer; font-size:2.5rem; font-weight:bold; color:white; transition:background 0.2s; user-select:none;">
+                    </div>
                 `).join('')}
             </div>
-            
-            <button id="oc-btn-submit" class="btn-primary" style="width:100%; padding:12px; font-size:1.1rem; background:var(--clr-success);">Portföyü Onayla</button>
         `;
         
-        setTimeout(updateOCUI, 50);
-
-        opProj.forEach(p => {
-            document.getElementById(`oc-proj-${p.id}`).onclick = function() {
-                p.selected = !p.selected;
-                if(p.selected) {
-                    this.style.background = 'rgba(59, 130, 246, 0.2)';
-                    this.style.borderColor = '#3b82f6';
-                } else {
-                    this.style.background = 'var(--clr-primary)';
-                    this.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+        let tttStatus = document.getElementById('ttt-status');
+        
+        function checkWin(b) {
+            const wins = [
+                [0,1,2], [3,4,5], [6,7,8],
+                [0,3,6], [1,4,7], [2,5,8],
+                [0,4,8], [2,4,6]
+            ];
+            for (let w of wins) {
+                if (b[w[0]] && b[w[0]] === b[w[1]] && b[w[0]] === b[w[2]]) {
+                    return b[w[0]]; // 'X' veya 'O'
                 }
-                updateOCUI();
-            };
-        });
-
-        document.getElementById('oc-btn-submit').onclick = function() {
-            let currentCost = 0;
-            let currentProfit = 0;
-            opProj.forEach(p => {
-                if (p.selected) {
-                    currentCost += p.cost;
-                    currentProfit += p.profit;
+            }
+            if (b.every(cell => cell !== "")) return 'draw';
+            return null;
+        }
+        
+        function renderBoard() {
+            board.forEach((val, idx) => {
+                let cell = document.getElementById(`ttt-cell-${idx}`);
+                if (cell) {
+                    cell.textContent = val;
+                    if (val === 'X') {
+                        cell.style.color = '#3b82f6';
+                        cell.style.background = 'rgba(59, 130, 246, 0.1)';
+                    } else if (val === 'O') {
+                        cell.style.color = '#ef4444';
+                        cell.style.background = 'rgba(239, 68, 68, 0.1)';
+                    } else {
+                        cell.style.color = 'white';
+                        cell.style.background = 'rgba(255,255,255,0.05)';
+                    }
                 }
             });
-
-            if (currentCost <= budgetLimit && currentProfit >= targetProfit) {
-                gameWon = true;
-                this.style.background = 'var(--clr-success)';
-                this.textContent = 'YATIRIM BAŞARILI! ONAYLANDI...';
-                setTimeout(winMinigame, 500);
-            } else {
-                if (currentCost > budgetLimit) notify(`Başarısız: Bütçe aşıldı! En fazla ${budgetLimit} harcayabilirsin.`, "error");
-                else if (currentProfit < targetProfit) notify(`Başarısız: Getiri hedefi yetersiz! En az ${targetProfit}M getiri gerekir.`, "error");
+        }
+        
+        function makeAIMove() {
+            if (gameWon || !minigameActive) return;
+            aiThinking = true;
+            tttStatus.style.color = '#ef4444';
+            tttStatus.textContent = 'Rakip Düşünüyor (O)...';
+            
+            let thinkTimeout = setTimeout(() => {
+                if (!minigameActive || gameWon) return;
+                
+                let move = -1;
+                
+                // 1. Kendi kazanma durumunu kontrol et
+                for (let i = 0; i < 9; i++) {
+                    if (board[i] === "") {
+                        let tempBoard = [...board];
+                        tempBoard[i] = "O";
+                        if (checkWin(tempBoard) === 'O') { move = i; break; }
+                    }
+                }
+                
+                // 2. Oyuncunun kazanmasını engelle (Block)
+                if (move === -1) {
+                    for (let i = 0; i < 9; i++) {
+                        if (board[i] === "") {
+                            let tempBoard = [...board];
+                            tempBoard[i] = "X";
+                            if (checkWin(tempBoard) === 'X') { move = i; break; }
+                        }
+                    }
+                }
+                
+                // 3. Ortayı almaya çalış
+                if (move === -1 && board[4] === "") {
+                    move = 4;
+                }
+                
+                // 4. Rastgele hamle
+                if (move === -1) {
+                    let empties = [];
+                    board.forEach((cell, idx) => { if (cell === "") empties.push(idx); });
+                    if (empties.length > 0) {
+                        move = empties[Math.floor(Math.random() * empties.length)];
+                    }
+                }
+                
+                if (move !== -1) {
+                    board[move] = "O";
+                    renderBoard();
+                    
+                    let winner = checkWin(board);
+                    if (winner === 'O') {
+                        tttStatus.style.color = '#ef4444';
+                        tttStatus.textContent = 'Kaybettin! Sıfırlanıyor...';
+                        let resetTimeout = setTimeout(() => {
+                            if (!minigameActive) return;
+                            startAcademicMinigame(taskId);
+                        }, 1500);
+                        window.academicTimeouts.push(resetTimeout);
+                    } else if (winner === 'draw') {
+                        gameWon = true;
+                        tttStatus.style.color = '#10b981';
+                        tttStatus.textContent = 'Beraberlik! Görev Başarılı.';
+                        setTimeout(winMinigame, 600);
+                    } else {
+                        isPlayerTurn = true;
+                        aiThinking = false;
+                        tttStatus.style.color = '#3b82f6';
+                        tttStatus.textContent = 'Senin Sıran (X)';
+                    }
+                }
+            }, 600 + Math.random() * 400);
+            window.academicTimeouts.push(thinkTimeout);
+        }
+        
+        for (let i = 0; i < 9; i++) {
+            let cell = document.getElementById(`ttt-cell-${i}`);
+            if(cell) {
+                cell.onclick = function() {
+                    if (!isPlayerTurn || aiThinking || gameWon) return;
+                    let idx = parseInt(this.dataset.idx);
+                    if (board[idx] !== "") return;
+                    
+                    board[idx] = "X";
+                    renderBoard();
+                    
+                    let winner = checkWin(board);
+                    if (winner === 'X') {
+                        gameWon = true;
+                        tttStatus.style.color = '#10b981';
+                        tttStatus.textContent = 'KAZANDIN! Tebrikler.';
+                        setTimeout(winMinigame, 600);
+                    } else if (winner === 'draw') {
+                        gameWon = true;
+                        tttStatus.style.color = '#10b981';
+                        tttStatus.textContent = 'Beraberlik! Görev Başarılı.';
+                        setTimeout(winMinigame, 600);
+                    } else {
+                        isPlayerTurn = false;
+                        makeAIMove();
+                    }
+                };
             }
-        };
+        }
+        
+        renderBoard();
+    }
+    else if(task.gameType === 'word_scramble') {
+        const wordsPool = ["KAMPUS", "DIPLOMA", "AKADEMI", "REKTOR", "PROJE", "KUTUPHANE", "SINAV", "BILIM", "LABORATUVAR", "KARIYER", "DEKAN", "DERSLIK", "BURS"];
+        let targetCount = task.isExam ? 2 : 1;
+        let solvedCount = 0;
+        
+        let targetWord = "";
+        let currentSpelled = [];
+        let scrambledLetters = [];
+        
+        container.innerHTML = `
+            <p style="color:white; text-align:center; font-size:0.95rem; margin-bottom:15px; width:100%;">
+                Karışık harflerden anlamlı kelimeyi hecele!
+            </p>
+            <div id="ws-round-info" style="font-weight:bold; font-size:1.1rem; color:#a78bfa; margin-bottom:12px; text-align:center;">
+                Kelime: 1 / ${targetCount}
+            </div>
+            <div id="ws-slots" style="display:flex; justify-content:center; gap:8px; margin-bottom:20px; min-height:40px;">
+            </div>
+            <div id="ws-letters" style="display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-bottom:20px;">
+            </div>
+            <div id="ws-status" style="font-size:1rem; font-weight:bold; text-align:center; min-height:24px; color:#ef4444;"></div>
+        `;
+        
+        let slotsDiv = document.getElementById('ws-slots');
+        let lettersDiv = document.getElementById('ws-letters');
+        let roundInfoDiv = document.getElementById('ws-round-info');
+        let statusDiv = document.getElementById('ws-status');
+        
+        function selectAndScrambleWord() {
+            if(!minigameActive || gameWon) return;
+            let randWord = wordsPool[Math.floor(Math.random() * wordsPool.length)];
+            targetWord = randWord;
+            currentSpelled = [];
+            statusDiv.textContent = "";
+            
+            let letters = randWord.split('');
+            let attempts = 0;
+            do {
+                scrambledLetters = letters.map((l, i) => ({ letter: l, originalIdx: i }))
+                                          .sort(() => Math.random() - 0.5);
+                attempts++;
+            } while (scrambledLetters.map(x => x.letter).join('') === randWord && attempts < 10);
+            
+            renderRound();
+        }
+        
+        function renderRound() {
+            if(!minigameActive) return;
+            roundInfoDiv.textContent = `Kelime: ${solvedCount + 1} / ${targetCount}`;
+            
+            slotsDiv.innerHTML = '';
+            for (let i = 0; i < targetWord.length; i++) {
+                let slot = document.createElement('div');
+                slot.style.width = '35px';
+                slot.style.height = '40px';
+                slot.style.borderBottom = '3px solid #fbbf24';
+                slot.style.display = 'flex';
+                slot.style.justifyContent = 'center';
+                slot.style.alignItems = 'center';
+                slot.style.fontSize = '1.5rem';
+                slot.style.fontWeight = 'bold';
+                slot.style.color = '#fbbf24';
+                slot.textContent = currentSpelled[i] ? currentSpelled[i].letter : '';
+                slotsDiv.appendChild(slot);
+            }
+            
+            lettersDiv.innerHTML = '';
+            scrambledLetters.forEach((item, index) => {
+                let btn = document.createElement('button');
+                btn.className = 'btn-secondary';
+                btn.style.padding = '8px 15px';
+                btn.style.fontSize = '1.3rem';
+                btn.style.fontWeight = 'bold';
+                btn.textContent = item.letter;
+                
+                let isUsed = currentSpelled.some(x => x.scrambledIdx === index);
+                if (isUsed) {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.3';
+                }
+                
+                btn.onclick = function() {
+                    if (gameWon) return;
+                    currentSpelled.push({ letter: item.letter, scrambledIdx: index });
+                    renderRound();
+                    checkSpelledWord();
+                };
+                
+                lettersDiv.appendChild(btn);
+            });
+        }
+        
+        function checkSpelledWord() {
+            if (currentSpelled.length === targetWord.length) {
+                let spelledStr = currentSpelled.map(x => x.letter).join('');
+                if (spelledStr === targetWord) {
+                    solvedCount++;
+                    statusDiv.style.color = '#10b981';
+                    statusDiv.textContent = 'DOĞRU!';
+                    
+                    let wordDelay = setTimeout(() => {
+                        if (!minigameActive) return;
+                        if (solvedCount >= targetCount) {
+                            gameWon = true;
+                            setTimeout(winMinigame, 500);
+                        } else {
+                            selectAndScrambleWord();
+                        }
+                    }, 800);
+                    window.academicTimeouts.push(wordDelay);
+                } else {
+                    statusDiv.style.color = '#ef4444';
+                    statusDiv.textContent = 'HATALI KELİME! Sıfırlanıyor...';
+                    
+                    let resetDelay = setTimeout(() => {
+                        if (!minigameActive) return;
+                        currentSpelled = [];
+                        statusDiv.textContent = '';
+                        renderRound();
+                    }, 1200);
+                    window.academicTimeouts.push(resetDelay);
+                }
+            }
+        }
+        
+        selectAndScrambleWord();
+    }
+    else if(task.gameType === 'odd_one_out') {
+        const pairs = [
+            { normal: '📘', odd: '📙' },
+            { normal: '🍎', odd: '🍒' },
+            { normal: '📐', odd: '📏' },
+            { normal: '🐹', odd: '🐰' },
+            { normal: '🎓', odd: '👑' },
+            { normal: '💻', odd: '🖥️' },
+            { normal: '⚽', odd: '🏀' },
+            { normal: '💡', odd: '🔦' },
+            { normal: '☕', odd: '🍵' },
+            { normal: '🌟', odd: '⭐' }
+        ];
+        
+        let targetRounds = task.isExam ? 5 : 3;
+        let currentRound = 0;
+        let timeLeft = 15;
+        let timerInterval = null;
+        let oddIndex = -1;
+        
+        container.innerHTML = `
+            <p style="color:white; text-align:center; font-size:0.95rem; margin-bottom:15px; width:100%;">
+                Diğerlerinden farklı olan tek emojiyi bul ve tıkla! (Zaman Sınırı var)
+            </p>
+            <div style="display:flex; justify-content:space-between; width:100%; max-width:300px; margin:0 auto 15px; font-weight:bold; font-size:1.1rem;">
+                <span style="color:#a78bfa;">Tur: <span id="ooo-round">1</span> / ${targetRounds}</span>
+                <span style="color:#ef4444;">Süre: <span id="ooo-timer">15</span>s</span>
+            </div>
+            <div id="ooo-grid" style="display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; width:220px; height:220px; margin:0 auto;">
+            </div>
+        `;
+        
+        let roundSpan = document.getElementById('ooo-round');
+        let timerSpan = document.getElementById('ooo-timer');
+        let gridDiv = document.getElementById('ooo-grid');
+        
+        function loadNextRound() {
+            if(!minigameActive) return;
+            if (currentRound >= targetRounds) {
+                gameWon = true;
+                clearInterval(timerInterval);
+                setTimeout(winMinigame, 500);
+                return;
+            }
+            
+            roundSpan.textContent = currentRound + 1;
+            
+            let pair = pairs[Math.floor(Math.random() * pairs.length)];
+            oddIndex = Math.floor(Math.random() * 16);
+            
+            gridDiv.innerHTML = '';
+            for (let i = 0; i < 16; i++) {
+                let btn = document.createElement('button');
+                btn.className = 'btn-secondary';
+                btn.style.width = '48px';
+                btn.style.height = '48px';
+                btn.style.fontSize = '1.8rem';
+                btn.style.padding = '0';
+                btn.style.display = 'flex';
+                btn.style.justifyContent = 'center';
+                btn.style.alignItems = 'center';
+                btn.textContent = (i === oddIndex) ? pair.odd : pair.normal;
+                
+                btn.onclick = function() {
+                    if (gameWon || timeLeft <= 0 || !minigameActive) return;
+                    if (i === oddIndex) {
+                        currentRound++;
+                        loadNextRound();
+                    } else {
+                        timeLeft = Math.max(1, timeLeft - 1);
+                        timerSpan.textContent = timeLeft;
+                        this.style.background = 'rgba(239, 68, 68, 0.2)';
+                        setTimeout(() => { if(this) this.style.background = 'rgba(255,255,255,0.1)'; }, 300);
+                    }
+                };
+                gridDiv.appendChild(btn);
+            }
+        }
+        
+        loadNextRound();
+        
+        timerInterval = setInterval(() => {
+            if (!minigameActive || gameWon) { clearInterval(timerInterval); return; }
+            timeLeft--;
+            timerSpan.textContent = timeLeft;
+            
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                notify("Süre doldu! Farklı emojiyi zamanında bulamadınız.", "error");
+                
+                setTimeout(() => {
+                    if (!minigameActive) return;
+                    startAcademicMinigame(taskId);
+                }, 1000);
+            }
+        }, 1000);
+        window.academicIntervals.push(timerInterval);
     }
 };
 
@@ -3471,12 +3771,29 @@ function startMinigame(orderId) {
 function cancelMinigame() {
     minigameActive = false;
     document.getElementById('minigame-area').style.display = 'none';
+    if (window.academicIntervals) {
+        window.academicIntervals.forEach(clearInterval);
+        window.academicIntervals = [];
+    }
+    if (window.academicTimeouts) {
+        window.academicTimeouts.forEach(clearTimeout);
+        window.academicTimeouts = [];
+    }
 }
 
 function winMinigame() {
     if (!minigameActive) return;
     minigameActive = false;
     document.getElementById('minigame-area').style.display = 'none';
+    
+    if (window.academicIntervals) {
+        window.academicIntervals.forEach(clearInterval);
+        window.academicIntervals = [];
+    }
+    if (window.academicTimeouts) {
+        window.academicTimeouts.forEach(clearTimeout);
+        window.academicTimeouts = [];
+    }
     
     if (currentMGOrder && currentMGOrder.isAcademic) {
         if (gameState.monthlyCompletedAcademicTasks === undefined) gameState.monthlyCompletedAcademicTasks = 0;
