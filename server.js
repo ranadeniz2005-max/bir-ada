@@ -23,9 +23,137 @@ let mongoClient = null;
 let mongoCollection = null;
 let isMongoActive = false;
 
-// Veritabanı (Basit JSON dosyası)
 const DB_FILE = path.join(__dirname, 'database.json');
 let db = {};
+
+function normalizeDateStr(str) {
+    if (!str || typeof str !== 'string') return str;
+    
+    // Full date format: 1.Y 1.A 1.G (Sabah) or 1.Y 1.A 1.G (Öğle) or 1.Y 1.A 1.G (Akşam)
+    const fullRegex = /^(\d+)\.Y\s+(\d+)\.A\s+(\d+)\.G\s*(\([^)]+\))$/i;
+    let match = str.match(fullRegex);
+    if (match) {
+        const y = String(match[1]).padStart(4, '0');
+        const m = String(match[2]).padStart(2, '0');
+        const d = String(match[3]).padStart(2, '0');
+        let vakit = match[4];
+        if (vakit.toLowerCase().includes('sabah')) vakit = '(Sabah)';
+        else if (vakit.toLowerCase().includes('akşam') || vakit.toLowerCase().includes('akam') || vakit.toLowerCase().includes('akam')) vakit = '(Akşam)';
+        else vakit = '(Öğle)';
+        return `${d}.${m}.${y} ${vakit}`;
+    }
+
+    // Full date format without phase
+    const fullNoPhaseRegex = /^(\d+)\.Y\s+(\d+)\.A\s+(\d+)\.G$/i;
+    match = str.match(fullNoPhaseRegex);
+    if (match) {
+        const y = String(match[1]).padStart(4, '0');
+        const m = String(match[2]).padStart(2, '0');
+        const d = String(match[3]).padStart(2, '0');
+        return `${d}.${m}.${y}`;
+    }
+
+    // Chart label format: 1.Y 1.A
+    const chartRegex = /^(\d+)\.Y\s+(\d+)\.A$/i;
+    match = str.match(chartRegex);
+    if (match) {
+        const y = String(match[1]).padStart(4, '0');
+        const m = String(match[2]).padStart(2, '0');
+        return `${m}.${y}`;
+    }
+
+    // Career log format: [1.Yıl 1.Ay] ...
+    const careerRegex = /^\[(\d+)\.Yıl\s+(\d+)\.Ay\]/i;
+    match = str.match(careerRegex);
+    if (match) {
+        const y = String(match[1]).padStart(4, '0');
+        const m = String(match[2]).padStart(2, '0');
+        return str.replace(careerRegex, `[${m}.${y}]`);
+    }
+
+    return str;
+}
+
+function migrateDatabaseDates() {
+    let migratedCount = 0;
+    let changedKeys = [];
+    for (let key in db) {
+        let player = db[key];
+        if (!player || typeof player !== 'object') continue;
+
+        let changed = false;
+
+        // 1. notificationHistory
+        if (Array.isArray(player.notificationHistory)) {
+            player.notificationHistory.forEach(item => {
+                if (item && item.dateStr) {
+                    let normal = normalizeDateStr(item.dateStr);
+                    if (normal !== item.dateStr) {
+                        item.dateStr = normal;
+                        changed = true;
+                    }
+                }
+            });
+        }
+
+        // 2. transactions
+        if (Array.isArray(player.transactions)) {
+            player.transactions.forEach(item => {
+                if (item && item.dateStr) {
+                    let normal = normalizeDateStr(item.dateStr);
+                    if (normal !== item.dateStr) {
+                        item.dateStr = normal;
+                        changed = true;
+                    }
+                }
+            });
+        }
+
+        // 3. lawsuits
+        if (Array.isArray(player.lawsuits)) {
+            player.lawsuits.forEach(item => {
+                if (item && item.dateStr) {
+                    let normal = normalizeDateStr(item.dateStr);
+                    if (normal !== item.dateStr) {
+                        item.dateStr = normal;
+                        changed = true;
+                    }
+                }
+            });
+        }
+
+        // 4. careerHistory
+        if (Array.isArray(player.careerHistory)) {
+            player.careerHistory = player.careerHistory.map(item => {
+                let normal = normalizeDateStr(item);
+                if (normal !== item) {
+                    changed = true;
+                }
+                return normal;
+            });
+        }
+
+        // 5. financeHistory labels
+        if (player.financeHistory && Array.isArray(player.financeHistory.labels)) {
+            player.financeHistory.labels = player.financeHistory.labels.map(item => {
+                let normal = normalizeDateStr(item);
+                if (normal !== item) {
+                    changed = true;
+                }
+                return normal;
+            });
+        }
+
+        if (changed) {
+            migratedCount++;
+            changedKeys.push(key);
+        }
+    }
+    if (migratedCount > 0) {
+        console.log(`✅ Tarih formatı dönüşümü: ${migratedCount} oyuncunun kayıtları yeni formata yükseltildi. Değişenler: ${changedKeys.join(', ')}`);
+    }
+    return changedKeys;
+}
 
 // MongoDB veya Yerel Dosyaya veri kaydetme yardımcı fonksiyonları
 async function saveDatabaseKey(key, value) {
@@ -139,6 +267,13 @@ function loadLocalDatabase() {
         try {
             db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
             console.log("✅ Yerel veritabanı (database.json) başarıyla yüklendi.");
+            
+            // Normalize dates
+            let migratedKeys = migrateDatabaseDates();
+            if (migratedKeys.length > 0) {
+                fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf8');
+                console.log("💾 Yerel veritabanı format dönüşümü sonrası kaydedildi.");
+            }
         } catch (e) {
             console.error("❌ Yerel veritabanı okuma hatası:", e);
         }
@@ -1297,6 +1432,13 @@ async function initDatabase() {
                 db[doc.key] = doc.value;
             });
             console.log(`✅ MongoDB'den ${allDocs.length} kayıt başarıyla yüklendi.`);
+
+            // Normalize dates and save if changed
+            let migratedKeys = migrateDatabaseDates();
+            if (migratedKeys.length > 0) {
+                await saveDatabaseKeys(migratedKeys);
+                console.log("💾 MongoDB veritabanı format dönüşümü sonrası güncellendi.");
+            }
         } catch (e) {
             console.error("❌ MongoDB Atlas bağlantı hatası! Yerel veritabanına (database.json) geçiliyor...", e);
             loadLocalDatabase();

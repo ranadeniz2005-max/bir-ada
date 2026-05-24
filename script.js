@@ -6,13 +6,16 @@ function normalizeDateStr(str) {
     if (!str || typeof str !== 'string') return str;
     
     // Full date format: 1.Y 1.A 1.G (Sabah) or 1.Y 1.A 1.G (Öğle) or 1.Y 1.A 1.G (Akşam)
-    const fullRegex = /^(\d+)\.Y\s+(\d+)\.A\s+(\d+)\.G\s*(\((?:Sabah|Öğle|Akşam|sabah|öğle|akşam)\))$/i;
+    const fullRegex = /^(\d+)\.Y\s+(\d+)\.A\s+(\d+)\.G\s*(\([^)]+\))$/i;
     let match = str.match(fullRegex);
     if (match) {
         const y = String(match[1]).padStart(4, '0');
         const m = String(match[2]).padStart(2, '0');
         const d = String(match[3]).padStart(2, '0');
-        const vakit = match[4];
+        let vakit = match[4];
+        if (vakit.toLowerCase().includes('sabah')) vakit = '(Sabah)';
+        else if (vakit.toLowerCase().includes('akşam') || vakit.toLowerCase().includes('akam') || vakit.toLowerCase().includes('akam')) vakit = '(Akşam)';
+        else vakit = '(Öğle)';
         return `${d}.${m}.${y} ${vakit}`;
     }
 
