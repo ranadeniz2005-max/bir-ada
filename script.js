@@ -764,10 +764,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        let interestRate = 0.035;
-        if (term === 3) interestRate = 0.045;
-        else if (term === 6) interestRate = 0.055;
-        else if (term === 12) interestRate = 0.07;
+        let interestRate = 0.04;
+        if (term === 3) interestRate = 0.055;
+        else if (term === 6) interestRate = 0.075;
+        else if (term === 12) interestRate = 0.09;
         
         const totalRepayment = val + (val * interestRate);
         const monthlyPayment = Math.floor(totalRepayment / term);
@@ -793,10 +793,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if(val > 0) { 
             updateBalance(val, 'Kredi Çekimi (Gelir)', true);
             
-            let interestRate = 0.035;
-            if (term === 3) interestRate = 0.045;
-            else if (term === 6) interestRate = 0.055;
-            else if (term === 12) interestRate = 0.07;
+            let interestRate = 0.04;
+            if (term === 3) interestRate = 0.055;
+            else if (term === 6) interestRate = 0.075;
+            else if (term === 12) interestRate = 0.09;
             
             const totalRepayment = val + (val * interestRate); // Vadeye göre faiz
             const monthlyPayment = Math.floor(totalRepayment / term);
