@@ -4011,7 +4011,6 @@ window.renderUniStudents = function() {
 
 window.renderCityVenues = function() {
     window.currentVisitedVenues = []; // Reset when modal opens
-    window.currentlySatVenueId = null; // Reset table sitting state when modal opens
     // Önce sunucudan güncel online listesini iste
     if (window.socket) {
         window.socket.emit('get_online_players');
@@ -4025,6 +4024,12 @@ window.satAtVenueTable = function(venueId) {
     window.currentlySatVenueId = venueId;
     renderCityVenuesReal();
     notify("Masaya oturdunuz. Menüden sipariş verebilirsiniz!", "info");
+};
+
+window.leaveVenueTable = function() {
+    window.currentlySatVenueId = null;
+    renderCityVenuesReal();
+    notify("Masadan kalktınız.", "info");
 };
 
 window.renderCityVenuesReal = function() {
@@ -4192,7 +4197,7 @@ window.renderCityVenuesReal = function() {
         } else {
             customerNames.forEach(pName => {
                 let isMe = pName === gameState.username;
-                let displayName = isMe ? "Siz" : pName;
+                let displayName = isMe ? `${gameState.username} (Siz)` : pName;
                 let btn = isMe ? '' : `<button onclick="sendFriendRequest('${pName}', '${v.id}')" style="background:var(--clr-success); border:none; color:white; border-radius:3px; cursor:pointer;" title="İstek At">➕</button>`;
                 
                 customerHtml += `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.4); padding:4px 8px; border-radius:4px; margin-bottom:2px;">
@@ -4206,8 +4211,8 @@ window.renderCityVenuesReal = function() {
         let sitBtn = '';
         if (window.currentlySatVenueId === v.id) {
             sitBtn = `
-            <button class="btn-secondary" style="width:100%; margin-top:10px; background: rgba(16, 185, 129, 0.2); border-color: var(--clr-success); color: var(--clr-success); font-weight: bold; cursor: default;" onclick="event.preventDefault();">
-                🟢 Masadasınız
+            <button class="btn-danger" style="width:100%; margin-top:10px; background: transparent; border: 1px solid var(--clr-danger); color: var(--clr-danger); font-weight: bold; cursor: pointer;" onclick="leaveVenueTable()">
+                🚶 Masadan Kalk
             </button>
             `;
         } else {
