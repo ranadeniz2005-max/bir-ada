@@ -159,8 +159,9 @@
                         <button class="app-icon" onclick="openModal('modal-borsa')" style="background:linear-gradient(135deg, #10b981, #34d399); border-radius:15px; padding:15px 5px; color:white; border:none; display:flex; flex-direction:column; align-items:center; transition:transform 0.2s;">
                             <span style="font-size:1.5rem; margin-bottom:5px;">📈</span><span style="font-size:0.8rem; font-weight:600;">Borsa Cepte</span>
                         </button>
-                        <button class="app-icon" onclick="openModal('modal-social')" style="background:linear-gradient(135deg, #8b5cf6, #d946ef); border-radius:15px; padding:15px 5px; color:white; border:none; display:flex; flex-direction:column; align-items:center; transition:transform 0.2s;">
+                        <button class="app-icon" onclick="openModal('modal-social')" style="position:relative; background:linear-gradient(135deg, #8b5cf6, #d946ef); border-radius:15px; padding:15px 5px; color:white; border:none; display:flex; flex-direction:column; align-items:center; transition:transform 0.2s;">
                             <span style="font-size:1.5rem; margin-bottom:5px;">💬</span><span style="font-size:0.8rem; font-weight:600;">Ada Sosyal</span>
+                            <span id="social-noti-badge" style="position:absolute; top:-5px; right:-5px; background:var(--clr-danger); color:white; font-size:0.75rem; font-weight:bold; border-radius:50%; width:20px; height:20px; display:none; align-items:center; justify-content:center;">0</span>
                         </button>
                         <button class="app-icon" onclick="openModal('modal-admin')" id="btn-admin-panel" style="display:none; background:linear-gradient(135deg, #ef4444, #f87171); border-radius:15px; padding:15px 5px; color:white; border:none; flex-direction:column; align-items:center; transition:transform 0.2s;">
                             <span style="font-size:1.5rem; margin-bottom:5px;">📊</span><span style="font-size:0.8rem; font-weight:600;">Yönetim Paneli</span>
@@ -235,29 +236,50 @@
             </div>
             
             <h4 style="margin-top:15px; font-size:0.9rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">Bekleyen İstekler</h4>
-            <div id="friend-requests-list" style="margin-bottom:10px; max-height:80px; overflow-y:auto; font-size:0.8rem; color:var(--clr-text-muted);">Hiç bekleyen isteğiniz yok.</div>
-            
-            <h4 style="margin-top:10px; font-size:0.9rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">Arkadaşlarım (Sosyallik Skorunuz)</h4>
-            <div id="friends-list" style="margin-top:10px; font-size:0.9rem; color:var(--clr-text-muted); max-height:150px; overflow-y:auto;">
+            <div id="friend-requests-list" style="margin-top:10px; display:flex; flex-direction:column; gap:5px;">
+                Hiç bekleyen isteğiniz yok.
+            </div>
+
+            <h4 style="margin-top:20px; font-size:0.9rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:5px;">Arkadaşlarım</h4>
+            <div id="friends-list" style="margin-top:10px; display:flex; flex-direction:column; gap:5px; max-height:180px; overflow-y:auto;">
                 Hiç arkadaşınız yok. Şehir meydanına inip yeni insanlarla tanışmaya başlayın!
             </div>
         </div>
-        <div class="tab-content" id="social-mesajlar">
-            <p style="font-size:0.8rem; color:var(--clr-text-muted);">Sadece arkadaş listenizde olan kişilere Direkt Mesaj (DM) atabilirsiniz.</p>
-            
-            <div style="display:flex; gap:10px; margin-top:15px;">
-                <select id="dm-target" style="flex:1; padding:10px; border-radius:5px; background:rgba(255,255,255,0.1); color:white; border:none; outline:none;" onchange="renderDMHistory()">
-                    <option value="" style="color:black;">-- Konuşulacak Arkadaşı Seç --</option>
-                </select>
-            </div>
-            
-            <div style="display:flex; gap:10px; margin-top:10px;">
-                <input type="text" id="dm-message" placeholder="Mesajınız..." autocomplete="off" style="flex:1; padding:10px; border-radius:5px; border:none; background:rgba(0,0,0,0.3); color:white; outline:none;">
-                <button class="btn-primary" onclick="sendDirectMessage()">Gönder</button>
-            </div>
 
-            <div id="social-dm-list" style="margin-top:15px; background:rgba(0,0,0,0.3); border-radius:10px; padding:10px; height:150px; display:flex; flex-direction:column; gap:8px; overflow-y:auto; color:var(--clr-text-muted);">
-                Sembolik mesajlaşma penceresi... Lütfen üstten arkadaş seçin.
+        <div class="tab-content" id="social-mesajlar">
+            <p style="font-size:0.8rem; color:var(--clr-text-muted); margin-bottom: 12px;">Arkadaş listenizdeki kişilerle gerçek zamanlı mesajlaşın.</p>
+            
+            <div class="whatsapp-layout" style="display: flex; height: 380px; border-radius: 12px; overflow: hidden; background: rgba(15, 23, 42, 0.4); border: 1px solid var(--border-glass);">
+                <!-- Sol Sütun: Sohbetler Listesi -->
+                <div class="whatsapp-sidebar" style="width: 220px; border-right: 1px solid rgba(255, 255, 255, 0.08); display: flex; flex-direction: column; background: rgba(0, 0, 0, 0.25); flex-shrink: 0;">
+                    <div style="padding: 10px 15px; border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: bold; font-size: 0.8rem; color: var(--clr-primary); display: flex; align-items: center; gap: 6px; letter-spacing: 0.5px; text-transform: uppercase;">
+                        💬 Sohbetler
+                    </div>
+                    <div id="whatsapp-friends-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; padding: 6px;">
+                        <!-- Arkadaş sohbet kartları dinamik render edilecek -->
+                    </div>
+                </div>
+                
+                <!-- Sağ Sütun: Aktif Sohbet Ekranı -->
+                <div class="whatsapp-chat-pane" style="flex: 1; display: flex; flex-direction: column; background: rgba(15, 23, 42, 0.2);">
+                    <!-- Aktif Sohbet Header'ı -->
+                    <div id="whatsapp-chat-header" style="height: 50px; border-bottom: 1px solid rgba(255,255,255,0.08); padding: 8px 15px; display: flex; align-items: center; gap: 10px; background: rgba(0, 0, 0, 0.15); flex-shrink: 0;">
+                        <div style="font-size: 0.8rem; color: var(--clr-text-muted); text-align: center; width: 100%; font-style: italic;">
+                            Sohbet başlatmak için soldan bir arkadaşınızı seçin.
+                        </div>
+                    </div>
+                    
+                    <!-- Mesajlar Akış Alanı -->
+                    <div id="social-dm-list" style="flex: 1; padding: 15px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; scroll-behavior: smooth; color: var(--clr-text-muted);">
+                        <!-- Mesaj balonları buraya gelecek -->
+                    </div>
+                    
+                    <!-- Mesaj Yazma Alanı (Varsayılan olarak gizli) -->
+                    <div id="whatsapp-input-area" style="display: none; padding: 8px 12px; border-top: 1px solid rgba(255,255,255,0.08); background: rgba(0, 0, 0, 0.15); gap: 10px; align-items: center; flex-shrink: 0;">
+                        <input type="text" id="dm-message" placeholder="Mesaj yazın..." autocomplete="off" style="flex: 1; padding: 10px; border-radius: 8px; border: none; background: rgba(0, 0, 0, 0.3); color: white; outline: none; font-size: 0.85rem;" onkeydown="if(event.key === 'Enter') sendDirectMessage()">
+                        <button class="btn-primary" style="margin: 0; padding: 8px 16px; font-size: 0.85rem;" onclick="sendDirectMessage()">Gönder</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div></div>

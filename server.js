@@ -383,8 +383,8 @@ io.on('connection', (socket) => {
             let username = players[socket.id].username;
             let serverState = db[username] || {};
             
-            // Server-authoritative alanlar istemci tarafından EZİLEMEZ (Ancak Bakiye LOKAL hesaplandığı için istemciye güvenmek zorundayız)
-            clientState.chats = serverState.chats || clientState.chats;
+            // Sohbet geçmişini istemciden gelenle güncelliyoruz (Böylece gönderilen mesajlar kaybolmaz)
+            clientState.chats = clientState.chats || serverState.chats || {};
             clientState.debtsGiven = serverState.debtsGiven || clientState.debtsGiven;
             clientState.debtsTaken = serverState.debtsTaken || clientState.debtsTaken;
             clientState.friendRequests = serverState.friendRequests || clientState.friendRequests;

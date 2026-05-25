@@ -164,6 +164,9 @@ function openModal(id) {
     if(id === 'modal-shift' && typeof renderShiftOrders === 'function') renderShiftOrders();
     if(id === 'modal-social') {
         if(typeof renderFriends === 'function') renderFriends();
+        // Arkadaşlar sekmesi açılınca gelen istek bildirimini sıfırla
+        window.unreadFriendRequestsCount = 0;
+        if (typeof updateSocialNotificationBadge === 'function') updateSocialNotificationBadge();
     }
     if(id === 'modal-city' && typeof renderCityVenues === 'function') renderCityVenues();
     
@@ -189,6 +192,11 @@ function switchTab(btnElem, tabId) {
     contents.forEach(c => c.classList.remove('active'));
     btnElem.classList.add('active');
     document.getElementById(tabId).classList.add('active');
+    
+    if (tabId === 'social-arkadaslar') {
+        window.unreadFriendRequestsCount = 0;
+        if (typeof updateSocialNotificationBadge === 'function') updateSocialNotificationBadge();
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -227,6 +235,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     if(gameState.monthlyCompletedAcademicTasks === undefined) gameState.monthlyCompletedAcademicTasks = 0;
                     if(!gameState.activeAcademicTasks) gameState.activeAcademicTasks = [];
+                    
+                    if (Array.isArray(gameState.friendRequests)) {
+                        window.unreadFriendRequestsCount = gameState.friendRequests.length;
+                    }
+                    if (typeof updateSocialNotificationBadge === 'function') updateSocialNotificationBadge();
+                    
                     notify("Kayıtlı oyununuz sunucudan başarıyla yüklendi!", "success");
                     
                     let currentTarget = pendingServerTime.totalPhases;
@@ -359,6 +373,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!gameState.friendRequests.includes(data.sender)) {
                 gameState.friendRequests.push(data.sender);
                 notify(`[Sosyal Ağ] ${data.sender} size arkadaşlık isteği gönderdi!`, 'info');
+                
+                let isModalActive = document.getElementById('modal-social').classList.contains('active');
+                let isArkadaslarTabActive = document.getElementById('social-arkadaslar').classList.contains('active');
+                
+                if (!isModalActive || !isArkadaslarTabActive) {
+                    window.unreadFriendRequestsCount = (window.unreadFriendRequestsCount || 0) + 1;
+                    updateSocialNotificationBadge();
+                }
+                
                 if (typeof renderFriends === 'function') renderFriends();
             }
         });
@@ -387,6 +410,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (gameState.sentRequests) {
                 gameState.sentRequests = gameState.sentRequests.filter(req => req !== data.newFriend);
             }
+            if (gameState.friendRequests) {
+                gameState.friendRequests = gameState.friendRequests.filter(req => req !== data.newFriend);
+            }
+            window.unreadFriendRequestsCount = gameState.friendRequests ? gameState.friendRequests.length : 0;
+            updateSocialNotificationBadge();
+            
             notify(`[Sosyal Ağ] ${data.newFriend} arkadaşlık isteğinizi kabul etti!`, 'success');
             if (typeof renderFriends === 'function') renderFriends();
             saveGame(true);
@@ -396,6 +425,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.success) {
                 if (!gameState.friends) gameState.friends = [];
                 if (!gameState.friends.includes(data.newFriend)) gameState.friends.push(data.newFriend);
+                if (gameState.friendRequests) {
+                    gameState.friendRequests = gameState.friendRequests.filter(req => req !== data.newFriend);
+                }
+                window.unreadFriendRequestsCount = gameState.friendRequests ? gameState.friendRequests.length : 0;
+                updateSocialNotificationBadge();
+                
                 notify(data.msg, "success");
                 if (typeof renderFriends === 'function') renderFriends();
                 saveGame(true);
@@ -409,18 +444,23 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!gameState.chats[data.sender]) gameState.chats[data.sender] = [];
             gameState.chats[data.sender].push(data);
             
-            let dmDropdown = document.getElementById('dm-target');
-            if (dmDropdown) {
-                // Eğer dropdown boşsa veya zaten bu kişideysek, otomatik seç ve render et
-                if (dmDropdown.value === "" || dmDropdown.value === data.sender) {
-                    // Sadece listede bu kişi varsa seçebiliriz
-                    let optionExists = Array.from(dmDropdown.options).some(opt => opt.value === data.sender);
-                    if (optionExists) {
-                        dmDropdown.value = data.sender;
-                    }
-                    if (typeof renderDMHistory === 'function') renderDMHistory();
-                }
+            let isModalActive = document.getElementById('modal-social').classList.contains('active');
+            let isDMTabActive = document.getElementById('social-mesajlar').classList.contains('active');
+            let isCurrentTarget = window.activeChatUsername === data.sender;
+            
+            if (!isModalActive || !isDMTabActive || !isCurrentTarget) {
+                window.unreadDMs = window.unreadDMs || {};
+                window.unreadDMs[data.sender] = (window.unreadDMs[data.sender] || 0) + 1;
+                updateSocialNotificationBadge();
             }
+            
+            // Eğer modal ve DM sekmesi aktifse ve bu kişiyle konuşuluyorsa, doğrudan geçmişi güncelle
+            if (isCurrentTarget) {
+                if (typeof renderDMHistory === 'function') renderDMHistory();
+            }
+            
+            // Her durumda listeyi güncelle ki sidebar'daki son mesaj önizlemesi ve unread badge anında değişsin
+            if (typeof renderFriends === 'function') renderFriends();
         });
 
         window.socket.on('lawsuit_response', (data) => {
@@ -4381,10 +4421,11 @@ window.renderFriends = function() {
     if (reqList) reqList.innerHTML = reqHtml;
 
     let html = '';
-    let dmDropdownHtml = '<option value="" style="color:black;">-- Konuşulacak Arkadaşı Seç --</option>';
+    let whatsappFriendsHtml = '';
     
     if(!gameState.friends || gameState.friends.length === 0) {
         html = "Hiç arkadaşınız yok. Şehir meydanına inip yeni insanlarla tanışmaya başlayın!";
+        whatsappFriendsHtml = `<div style="font-size: 0.75rem; color: var(--clr-text-muted); text-align: center; padding: 20px 10px;">Henüz arkadaşınız yok.</div>`;
     } else {
         gameState.friends.forEach(f => {
             let isOnline = (window.onlinePlayersList || []).includes(f);
@@ -4393,21 +4434,78 @@ window.renderFriends = function() {
                 <strong>${f}</strong>
                 <span style="font-size:0.8rem; color:${isOnline ? 'var(--clr-success)' : 'var(--clr-danger)'}">${statusLog}</span>
             </div>`;
-            dmDropdownHtml += `<option value="${f}" style="color:black;">${f}</option>`;
+            
+            // WhatsApp Sidebar Contact Card
+            let chatList = (gameState.chats || {})[f] || [];
+            let lastChat = chatList[chatList.length - 1];
+            let lastMsg = lastChat ? lastChat.msg : 'Sohbet yok';
+            if (lastMsg.length > 20) lastMsg = lastMsg.substring(0, 18) + '...';
+            
+            let lastTimeStr = '';
+            if (lastChat && lastChat.time) {
+                let d = new Date(lastChat.time);
+                lastTimeStr = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+            }
+            
+            let unreadCount = (window.unreadDMs || {})[f] || 0;
+            let isActive = (f === window.activeChatUsername);
+            let itemBg = isActive ? 'rgba(255, 255, 255, 0.1)' : 'transparent';
+            let hoverBg = 'rgba(255, 255, 255, 0.05)';
+            
+            whatsappFriendsHtml += `
+                <div onclick="selectWhatsappChat('${f}')" 
+                     style="display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; background:${itemBg}; cursor:pointer; transition:background 0.2s;" 
+                     onmouseover="this.style.background='${hoverBg}'" 
+                     onmouseout="this.style.background='${itemBg}'">
+                    <div style="position:relative; flex-shrink:0;">
+                        <div style="width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg, #a78bfa, #f472b6); display:flex; align-items:center; justify-content:center; font-weight:bold; color:white; font-size:0.85rem;">
+                            ${f[0].toUpperCase()}
+                        </div>
+                        <span style="position:absolute; bottom:-2px; right:-2px; width:10px; height:10px; border-radius:50%; border:2px solid #1e293b; background:${isOnline ? '#10b981' : '#ef4444'};"></span>
+                    </div>
+                    <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-weight:600; font-size:0.8rem; color:white; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${f}</span>
+                            <span style="font-size:0.65rem; color:var(--clr-text-muted);">${lastTimeStr}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:5px;">
+                            <span style="font-size:0.7rem; color:var(--clr-text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">${lastMsg}</span>
+                            ${unreadCount > 0 ? `<span style="background:var(--clr-danger); color:white; font-size:0.65rem; border-radius:10px; min-width:16px; height:16px; display:inline-flex; align-items:center; justify-content:center; font-weight:bold; padding: 0 4px;">${unreadCount}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
         });
     }
     
     let fList = document.getElementById('friends-list');
     if (fList) fList.innerHTML = html;
     
-    let dropdown = document.getElementById('dm-target');
-    if (dropdown) dropdown.innerHTML = dmDropdownHtml;
+    let whatsappFriendsList = document.getElementById('whatsapp-friends-list');
+    if (whatsappFriendsList) {
+        whatsappFriendsList.innerHTML = whatsappFriendsHtml;
+    }
     
     if (typeof renderDMHistory === 'function') renderDMHistory();
 };
 
+window.selectWhatsappChat = function(username) {
+    window.activeChatUsername = username;
+    
+    // Clear unread count for this user
+    if (window.unreadDMs && window.unreadDMs[username]) {
+        window.unreadDMs[username] = 0;
+        updateSocialNotificationBadge();
+    }
+    
+    // Re-render friends list to update selected background and unread badges
+    renderFriends();
+    // Render the chat history
+    renderDMHistory();
+};
+
 window.sendDirectMessage = function() {
-    let target = document.getElementById('dm-target').value;
+    let target = window.activeChatUsername;
     let msg = document.getElementById('dm-message').value.trim();
     if(!target) {
         notify("Lütfen önce listeden bir arkadaş seçin!", "error"); return;
@@ -4424,6 +4522,7 @@ window.sendDirectMessage = function() {
         gameState.chats[target].push({ sender: gameState.username, msg: msg, time: new Date().toISOString() });
         
         if (typeof renderDMHistory === 'function') renderDMHistory();
+        if (typeof renderFriends === 'function') renderFriends();
         
         document.getElementById('dm-message').value = "";
     } else {
@@ -4432,44 +4531,94 @@ window.sendDirectMessage = function() {
 };
 
 window.renderDMHistory = function() {
-    let target = document.getElementById('dm-target') ? document.getElementById('dm-target').value : null;
+    let target = window.activeChatUsername;
     let listEl = document.getElementById('social-dm-list');
+    let headerEl = document.getElementById('whatsapp-chat-header');
+    let inputArea = document.getElementById('whatsapp-input-area');
     if (!listEl) return;
     
     if(!target) {
-        listEl.innerHTML = `<div style="text-align:center; color:var(--clr-text-muted); margin-top:20px;">Lütfen mesajlaşmak için yukarıdan bir arkadaş seçin.</div>`;
+        if (headerEl) {
+            headerEl.innerHTML = `<div style="font-size: 0.8rem; color: var(--clr-text-muted); text-align: center; width: 100%; font-style: italic;">Sohbet başlatmak için soldan bir arkadaşınızı seçin.</div>`;
+        }
+        listEl.innerHTML = `<div style="text-align:center; color:var(--clr-text-muted); margin-top:40px; font-size:0.85rem;">Lütfen sol taraftaki listeden sohbet etmek istediğiniz arkadaşınızı seçin.</div>`;
+        if (inputArea) inputArea.style.display = 'none';
         return;
+    }
+    
+    if (inputArea) inputArea.style.display = 'flex';
+    
+    if (headerEl) {
+        let isOnline = (window.onlinePlayersList || []).includes(target);
+        headerEl.innerHTML = `
+            <div style="width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg, #a78bfa, #f472b6); display:flex; align-items:center; justify-content:center; font-weight:bold; color:white; font-size:0.85rem; flex-shrink:0;">
+                ${target[0].toUpperCase()}
+            </div>
+            <div style="display:flex; flex-direction:column; gap:1px;">
+                <span style="font-weight:600; font-size:0.85rem; color:white;">${target}</span>
+                <span style="font-size:0.65rem; color:${isOnline ? '#10b981' : '#ef4444'}; font-weight:500;">
+                    ${isOnline ? '🟢 Çevrimiçi' : '🔴 Çevrimdışı'}
+                </span>
+            </div>
+        `;
+    }
+    
+    // Okunmamış mesaj bildirimini sıfırla
+    if (window.unreadDMs && window.unreadDMs[target]) {
+        window.unreadDMs[target] = 0;
+        updateSocialNotificationBadge();
     }
     
     if (!gameState.chats) gameState.chats = {};
     let history = gameState.chats[target] || [];
     
     if (history.length === 0) {
-        listEl.innerHTML = `<div style="text-align:center; color:var(--clr-text-muted); margin-top:20px;">${target} ile hiç mesajınız yok. İlk mesajı siz gönderin!</div>`;
+        listEl.innerHTML = `<div style="text-align:center; color:var(--clr-text-muted); margin-top:40px; font-size:0.85rem;">${target} ile henüz sohbet geçmişiniz bulunmuyor. İlk mesajı göndererek başlayın!</div>`;
         return;
     }
     
     let html = '';
     history.forEach(chat => {
         let isMe = chat.sender === gameState.username;
-        let color = isMe ? 'rgba(16,185,129,0.2)' : 'rgba(0,0,0,0.4)';
-        let border = isMe ? 'var(--clr-success)' : 'var(--clr-primary)';
-        let title = isMe ? `Siz -> ${target}` : `${chat.sender} -> Siz`;
         
         let timeStr = "";
         if (chat.time) {
             let d = new Date(chat.time);
-            timeStr = ` <span style="font-size:0.6rem; color:gray;">(${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')})</span>`;
+            timeStr = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
         }
 
-        html += `<div style="padding:8px; background:${color}; border-left:4px solid ${border}; border-radius:5px; margin-bottom:5px;">
-            <div style="font-size:0.7rem; color:${isMe ? 'white' : 'var(--clr-primary)'};">${title}${timeStr}</div>
-            <div style="font-size:0.9rem; word-break:break-word;">${chat.msg}</div>
-        </div>`;
+        let bubbleBg = isMe ? 'linear-gradient(135deg, #059669, #047857)' : 'rgba(51, 65, 85, 0.6)';
+        let alignSelf = isMe ? 'flex-end' : 'flex-start';
+        let borderRadius = isMe ? '12px 12px 0px 12px' : '12px 12px 12px 0px';
+        let textColor = 'white';
+        
+        html += `
+            <div style="align-self: ${alignSelf}; max-width: 75%; background: ${bubbleBg}; border-radius: ${borderRadius}; padding: 8px 12px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.05); margin-bottom: 2px;">
+                <div style="font-size: 0.85rem; color: ${textColor}; word-break: break-word; line-height: 1.4;">${chat.msg}</div>
+                <div style="font-size: 0.6rem; color: rgba(255,255,255,0.6); font-family: monospace; align-self: flex-end; margin-top: -2px;">${timeStr}</div>
+            </div>
+        `;
     });
     
     listEl.innerHTML = html;
-    listEl.scrollTop = 9999;
+    listEl.scrollTop = 999999;
+};
+
+// Ada Sosyal Bildirim Rozeti Güncelleme Fonksiyonu
+window.updateSocialNotificationBadge = function() {
+    let badge = document.getElementById('social-noti-badge');
+    if (!badge) return;
+    
+    let totalDMs = Object.values(window.unreadDMs || {}).reduce((a, b) => a + b, 0);
+    let totalRequests = window.unreadFriendRequestsCount || 0;
+    let total = totalDMs + totalRequests;
+    
+    if (total > 0) {
+        badge.textContent = total;
+        badge.style.display = 'flex';
+    } else {
+        badge.style.display = 'none';
+    }
 };
 
 window.publishGlobalNews = function() {
