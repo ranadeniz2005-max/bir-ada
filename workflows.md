@@ -11,51 +11,54 @@ Aşağıdaki iş akışları, oyuncunun ekonomi ve hayatta kalma oyunundaki ("Bi
 2. Sistem İlk gün saat 08:00 (1. Faz - Sabah) başladığında oyuncunun 15 öğünlük başlangıç erzağından `-1` düşer. 
 3. Sistem takvimi ilerledikçe (oyuncu offline olsa bile offline catch-up ile zamanı simüle ederek yakalar), oyuncunun sisteme ilk giriş yaptığı tarihin (joinDate) yıl dönümü geldiğinde oyuncu yaşlanır ve her geçen yıl için Hükümetten **1.000 🪙 Doğum Günü Bonusu** kazanır. 
 4. Ada takvimi 1 Ocak'a geldiğinde tüm adada "Yeni Yıl" görsel olarak kutlanır, ayrıca her ay bitiminde otel kirası kesilip varsa işsizlik maaşı yatar.
-5. Oyuncu "Kariyer Merkezi"nden "Sisteme Bağlı İşçi (Kafe/Barista vs.)" butonunu seçer ve çalışır. Vardiyasında her görev bitirdiğinde **yorgunluktan -1 can ve -1 moral** puanı azalır. Maaş için de ayda **min. 50 kotayı** doldurmalıdır.
+5. Oyuncu "Kariyer Merkezi"nden "Sisteme Bağlı İşçi (Ada Kafe İşçisi, Ada Butik İşçisi vb.)" butonunu seçer ve çalışır. Bu işlerde çalışanların maaşları bankada **"Ada Maaşı"** olarak görünür. Vardiyasında her görev bitirdiğinde **yorgunluktan -1 can ve -1 moral** puanı azalır. Maaş için de ayda **min. 50 kotayı** doldurmalıdır.
+6. **Otele Geri Dönüş:** Kiralık veya satın alınmış evlerden otele geri dönmek isteyen oyuncular, hem Emlakçı hem de Otel menülerindeki **"Evi Boşalt ve Otele Dön"** butonunu kullanarak otele geri dönebilir. Satılan evlerin yarı bedeli oyuncuya iade edilir.
 
 ## Senaryo 2: Akademik Hayat, Kota ve Sınav Döngüsü
-1. Oyunun 6. Ayı dolar ve sistem "Üniversiteye" izin verir. Öğrenci yetkisi kazanan öğrenci indirimler kazanır (Örn: Psikiyatri Kliniği %30 indirimlidir).
-2. Üniversite sekmesinde o an okuyan "Üniversite Öğrencileri" listesi canlı takip edilebilir. Öğrenciler "Ada Ofis" gibi prestijli part-time işlerde çalışabilirler.
-3. **Akademik Görevler ve Kota:** Üniversite sekmesinde 3 adet aktif ders görevi (Ödev/Proje) bulunur. Tamamlanan her görev anında yenisiyle doldurulur. Öğrenciler ay sonunda 4.000 🪙 burslarını koruyabilmek ve mezuniyet yolunda ilerleyebilmek için en az **30 Akademik Görev** bitirmelidir.
-4. **Cezalar & Zihinsel Yorgunluk:** Kotanın altında kalınırsa, yapılmayan her ödev için burs ödemesinden **200 🪙 kesilir.** Ayrıca 30 görevin altında kalan öğrencilerin o ayki eğitimi geçersiz sayılır ve okul süresi **1 ay uzar!** Ders çalışmak zihni yıprattığından her başarılı görevde karakterden **-2 Moral ve -0.5 Can** eksilir.
-5. **Sınav Haftaları:** 3, 6, 9 ve 12. ayların son haftalarında (22-30. günler) sınav dönemleri başlar. Ödevler **SINAV** görevine dönüşür ve daha zor akademik mini oyunlarla (refleks testi, renk dizisi hatırlama, köstebek vurmaca, X-O-X oyunu, kelime karıştırma veya farklı olanı bulma) test edilirsiniz.
-6. **Üniversite Dondurma & Ayrılma:** Öğrenciler okulu en fazla 2 kez ve her seferinde en fazla 6 ay dondurabilir (dondurulduğu sürece öğrenci avantajları askıya alınır, part-time işten otomatik çıkılır, 6. ayın sonunda okula zorunlu geri dönüş yapılır ve okunan aylar aynen korunur). Okuldan ayrılma (dropout) seçildiğinde tüm ilerleme sıfırlanır ve tekrar kaydolmak için 12 ay bekleme süresi başlar (yeni kayıt 0. aydan başlar).
-7. Üniversite bitince "Üst Düzey Yönetici Ol" cv'sini başvurur.
-8. *Adada 17'den az Müdür varsa* admin kabul eder. Ancak kota zaten 17 doldurulmuşsa liyakat dahi tanınmaksızın başvuru sistem tarafından sertçe reddedilir.
-9. Yöneticilik sonsuza kadar sürmez. Sistemin adaleti gereği her 2 yılda bir (24. Ay, 48. Ay vb.) 17 kişilik tüm müdürlük kadrosu sıfırlanır ve herkes işinden atılarak koltuklar yeniden yarışa açılır.
+1. Oyunun 6. Ayı dolar ve sistem "Üniversiteye" izin verir.
+2. **Üniversiteye Giriş ve İş Engeli:** Aktif bir işte (asgari veya üst düzey) çalışan oyuncunun üniversiteye kayıt olması veya dondurulmuş okulu açması engellenir. Önce mevcut işinden istifa etmesi istenir.
+3. **Dondurma ve Zoraki Dönüş:** Üniversite eğitimi en fazla 2 kez ve maksimum 6'şar aylığına dondurulabilir. 6 ay sonunda okula zorunlu geri dönüş yapıldığında, oyuncu bu sırada bir işe girdiyse o işinden otomatik olarak istifa ettirilir.
+4. **Akademik Görevler ve Kota:** Üniversite sekmesinde yer alan akademik görevlerden ay sonunda 4.000 🪙 bursu koruyabilmek ve mezuniyete ilerleyebilmek için en az **30 Akademik Görev** bitirilmelidir.
+5. **Cezalar & Zihinsel Yorgunluk:** Kotanın altında kalınırsa, yapılmayan her ödev için burs ödemesinden **200 🪙 kesilir.** Ayrıca 30 görevin altında kalınırsa eğitim geçersiz sayılarak okul **1 ay uzar!** Başarılı her ödevde karakterden **-2 Moral ve -0.5 Can** eksilir.
+6. **Sınav Haftaları:** 3, 6, 9 ve 12. ayların son haftalarında sınav dönemleri başlar. Görevler SINAV görevine dönüşür ve daha zor mini oyunlarla test edilirsiniz.
+7. **İflas Durumunda Kayıt Silinmesi:** Kritik iflas tetiklendiğinde Hapis seçilirse tüm mal varlığı ve okul kaydı silinir. Haciz seçilip asgari zorunlu kamu hizmetine atanılırsa üniversite kaydı yine otomatik silinir.
+8. Üniversite bitince "Üst Düzey Yönetici Ol" CV'si ile başvurulabilir. Üst düzey yöneticilerin (Bakanlar) maaşları bankada **"Memur Maaşı"** olarak görünür. Adada maksimum **17 Müdür** bulunabilir ve bu kadrolar **her 2 yılda bir (24 Ay)** tamamen sıfırlanır.
 
 ## Senaryo 3: İşletme Kurma, İhale ve İşçi Vergisi
 1. Oyuncunun kasasında **1.000.000** coin üstünde bakiye birikir (Ve oyunun 12. Ayı geçmiştir).
 2. Fırın veya Kafe ihalelerine katılır. Patron olarak o işletmeye her ay vergi/maaş öder.
-3. Ancak şirket sahibiyseniz o şirkete bizzat yemeğe veya kahveye gittiğiniz zaman "Hak Sahibi İndirimi" olan **%40 Personel İndirimiyle** bedava denebilecek ücretlere moralinizi lüks derecesine (fullenir) çıkartabilirsiniz. (Ada Ofis part-time çalışanları da bu indirimden yararlanır).
+3. Patron veya çalışan olunan işletmelerde sosyalleşme yapıldığında **%40 VIP Personel İndirimi** uygulanır.
 
 ## Senaryo 4: Şehir Meydanında Sosyalleşme ve Global Yayın (Multiplayer)
 1. Oyuncu çok çalışmaktan yorulmuş veya borç stresinden (eksi bakiye) **Moral barı** %0'a doğru inmeye başlamıştır. Eğer 0'ı görürse 5.000 🪙 Depresyon Hastane masrafı öder.
-2. Bunun için arayüzden **"Şehir Meydanı"na** iner ve Kafe / Butik isimli kartellerden birinin "Mekandakiler" butonunu kontrol eder. İçerideki patron, işçi ve o an sunucuda aktif olan gerçek **Online Müşterileri** listeler.
-3. Ancak oyuncu, o mekana giriş yapıp "Harcama Yap" butonunu kullanmadan (yani o masaya oturmadan) diğer kişilerin yanındaki ➕ butonuna basarsa sistem hata verir. Sosyalleşmek için mutlaka para harcamalıdır. Parayı harcayıp adisyon açtıktan sonra masalardaki online müşterilere canlı istek atabilir.
-4. Karşı taraf (hedef oyuncu) Ada Sosyal menüsünden **[Kabul Et]** butonuna bastığında kalıcı olarak arkadaş olurlar ve birbirlerinin online/offline durumlarını görürler.
-5. Sadece bu arkadaşlarıyla "Ada Sosyal -> Mesajlar (DM)" sayfasından sunucu üzerinden gerçek zamanlı (Real-Time P2P Chat) dertleşebilir. Yeni bir mesaj geldiğinde bildirim kutusunu açarsanız sistem otomatik olarak sizi o arkadaşınızla olan konuşmaya odaklar. Mesajlar adaletin sağlanması için sunucuda loglanır.
-6. Eğer oyuncu tüm adaya hitap etmek isterse, ekranın en üstündeki **Ada Haber Bülteni (Global Chat)** üzerinden 50 🪙 karşılığında kayan yazıyla anons geçebilir.
+2. Bunun için arayüzden **"Şehir Meydanı"na** iner ve Kafe / Butik isimli kartellerden birinin "Mekandakiler" butonunu kontrol eder.
+3. Sosyalleşmek ve arkadaşlık isteği (➕) atabilmek için mutlaka o mekanda harcama yapılması (adisyon açılması) zorunludur. Bedavaya sosyalleşilemez.
+4. Karşı taraf arkadaşlık isteğini kabul ettiğinde kalıcı olarak arkadaş olurlar.
+5. **Mobil Uyumlu DM Arayüzü:** Arkadaşlar arasında DM üzerinden mesajlaşılabilir. DM ekranı telefonlar için tamamen **mobil uyumlu** hale getirilmiştir. Telefonda mesajlaşırken arkadaş listesi gizlenir ve sohbet alanı ekranı kaplar; geri dönmek için sol üstteki ⬅️ butonu kullanılır.
+6. Adaya hitap etmek için Ada Haber Bülteni (Global Chat) üzerinden 50 🪙 karşılığında global anons geçilebilir.
 
 ## Senaryo 5: Sosyal Ağ, P2P Finans ve Yapay Zeka Yargıç (Multiplayer)
-1. Anlaşan oyuncular **Banka > Para Transferi** modülüne girerek birbirlerine "P2P Borç/Para Gönderimi" yaparlar.
-2. Bir anlaşmazlık veya hakaret durumu olursa mağdur taraf Karakol **(Dava Aç)** menüsüne gelir, **3.000 🪙** harç ödeyerek oyuncuyu Adliyeye şikayet eder.
-3. **Otomatik Yargıç:** Sunucu (Yapay Zeka) anında davacı ve davalı arasındaki DM loglarını okur. "Aptal, salak, hırsız" vb. hakaretler tespit ederse Yargıç anında davalıdan **10.000 🪙 tazminat** keserek davacıya verir.
-4. Suçsuz veya iftiraysa şikayetçiye adaleti meşgul etmekten **5.000 🪙 iftira cezası** uygulanır.
+1. Anlaşan oyuncular **Banka > Para Transferi** modülüne girerek birbirlerine para transferi yaparlar.
+2. Anlaşmazlık veya hakaret durumunda Karakol üzerinden **3.000 🪙** harç ödenerek dava açılabilir.
+3. **Otomatik Yargıç:** Yapay zeka yargıç, taraflar arasındaki DM loglarını okuyarak hakaret ("aptal, salak, hırsız" vb.) tespit ederse davalıdan **10.000 🪙 tazminat** kesip davacıya verir. İftira davalarında ise davacıya **5.000 🪙 ceza** kesilir.
 
-## Senaryo 6: Kritik İflas ve Ceza Seçimi
-1. Oyuncu parasını eksiye batırıp **-100.000 🪙** sınırına getirir. İflas ekranıyla yüzleşir.
-2. Hapishane, ev hacizi veya maaştan daimi yüksek haciz oranlarını seçmek mecburiyetindedir.
+## Senaryo 6: Findex Kredi Sistemi ve Borçlanma Limitleri (YENİ)
+1. Bankacılık sistemi gerçek hayattaki Findex not sistemine dayanır. Her oyuncunun başlangıç skoru **1100 (Orta)** olarak belirlenir (Aralık: 300 - 1900).
+2. **Skor Dinamikleri:** Aylık taksitlerini düzenli ödeyenlerin Findex notu **+15 puan** artar. Krediyi tamamen kapatanlar **+50 puan** ödül alır. Ayı ekside kapatmak **-15 puan** ceza verir. Taksit ödeme gününde hesapta para yoksa veya eksi bakiye ile zoraki taksit ödenirse Findex **-25 puan** düşer. İflasta not hapis için 300'e, haciz için 400'e sıfırlanır.
+3. **Limit Kontrolleri:** Maksimum kredi limitiniz aylık geliriniz ve Findex skorunuza göre dinamik olarak hesaplanır: $\text{Limit} = \text{Aylık Gelir} \times (\text{Findex} / 350) \times 1.5$. Findex skoru **700'ün altında (Çok Riskli)** olan kişilere kredi kullandırılmaz.
+4. **Borçlanma Sınırı (%70 Kuralı):** Aylık toplam kredi taksit ödemeleriniz aylık net gelirinizin **%70'ini aşamaz.**
+5. **Dinamik Faiz:** Findex notu çok iyi (>=1700) olanlara %20 faiz indirimi, iyi (>=1500) olanlara %10 faiz indirimi uygulanırken, orta riskli (<1100) olanların faiz oranları %30 artırılır.
 
-## Senaryo 7: Danışman Bota Danışmak (Yapay Zeka NLP Engine)
-1. Oyuncu finansal krizde ne yapacağını bilemez ve sağ alttaki "Danışman Bot"u açar.
-2. "Bana durumumun analizini yap" yazar. Bot, sabit kural okumak yerine o an oyuncunun canlı `gameState` verisindeki parasını, canını, erzak miktarını analiz eder.
-3. Yapay Zeka bot animasyonu (Typing effect) devreye girer ve saniyeler içinde harfleri tek tek yazarak bizzat oyuncunun eksi bakiyesini ve bitmekte olan stoğunu bildiren özelleştirilmiş bir reçete sunar!
+## Senaryo 7: Kritik İflas ve Ceza Seçimi
+1. Oyuncu parasını eksiye batırıp **-100.000 🪙** sınırına getirdiğinde iflas tetiklenir.
+2. Hapishane, ev hacizi veya zorunlu kamu hizmetini seçmek zorundadır. Hapis seçildiğinde tüm mal varlığı ve üniversite kaydı silinir. Haciz seçilip zorunlu kamu hizmetine atanılırsa üniversite kaydı yine otomatik silinir.
 
-## Senaryo 8: Bulut Veritabanı ve Otomatik Kayıt (Multiplayer Persistence)
-1. Oyuncu giriş yaptığında Node.js sunucusundaki `database.json` sorgulanır.
-2. Eğer oyuncunun kaydı varsa eski `gameState` sunucudan istemciye (`load_game_state`) yüklenir ve oyuncu kaldığı yerden devam eder.
-3. Sürekli Bilanço Sistemi sayesinde, oyuncunun kazandığı veya harcadığı her kuruş "Bu Ayki Gider / Gelir" tablosuna o an canlı olarak (real-time) işlenir.
-4. Oyun saati sunucuda (Global Game Loop) ilerler, istemci artık her gün sonunu beklemez; arka planda **her 10 saniyede bir** sunucuya otomatik olarak bir kayıt isteği atar (`save_game_state`).
-5. Admin (Yönetim Kurulu), sunucu tarafında tam yetkilidir. Hile yapan oyuncuyu tek bir tuşla silebilir. Bu işlem yapıldığında sunucu, silinen oyuncuyu sadece veri tabanından atmakla kalmaz; o oyuncuyu **tüm aktif arkadaş listelerinden** söküp çıkarır ve ismini boşa çıkartarak o isimle yeniden temiz bir hesap açılmasına izin verir.
-6. Oyuncu gün ortasında oyunu terk etmek isterse veya içinin rahat etmesini isterse ana sayfadaki `💾 Kaydet` butonuna basarak anlık (manuel) kayıt alabilir. Böylece emekleri kalıcı dünyada (Persistent World) daima güvende olur.
+## Senaryo 8: Danışman Bota Danışmak (Yapay Zeka NLP Engine)
+1. Finansal krizdeki oyuncu sağ alttaki Danışman Bot'a "Durumum nedir, analiz yap" yazdığında, bot oyuncunun canlı verilerini (yaş, bakiye, can, erzak) okuyarak özel tavsiyeler üretir.
+2. Botun cevapları ekrana ChatGPT gibi harf harf yazılma (Typing effect) animasyonuyla yansır.
+
+## Senaryo 9: Bulut Veritabanı, Otomatik Kayıt ve Gelişmiş Admin Takibi
+1. Node.js sunucusundaki `database.json` aracılığıyla veriler kalıcı tutulur. Sistem arka planda **her 10 saniyede bir** sunucuya otomatik kayıt isteği atar.
+2. Oyuncu dilerse sol menüdeki `💾 Kaydet` butonuyla manuel kayıt da alabilir.
+3. **Gelişmiş Admin Paneli:** Şehir Yönetimi panelden tüm oyuncuların yaş, bakiye, iş, barınma, eğitim, yetenek ve online durumlarının yanı sıra artık her oyuncunun **Findex Skorunu, Kredi Borcunu** ve **Mevduat Bakiyesini** de gerçek zamanlı olarak (13 sütunlu panel) takip edebilir.
+4. Kural ihlali yapan oyuncular tek tuşla silinebilir ve arkadaş listelerinden dezenfekte edilir.
