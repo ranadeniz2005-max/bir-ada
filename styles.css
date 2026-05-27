@@ -579,3 +579,80 @@ input:focus {
 #global-news-ticker::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.4);
 }
+
+/* --- ADA SOSYAL DM PANELI --- */
+.whatsapp-layout {
+    display: flex;
+    height: 380px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid var(--border-glass);
+}
+
+.whatsapp-sidebar {
+    width: 220px;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    background: rgba(0, 0, 0, 0.25);
+    flex-shrink: 0;
+}
+
+.whatsapp-chat-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: rgba(15, 23, 42, 0.2);
+}
+
+.whatsapp-input-area {
+    display: none;
+    padding: 8px 12px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    background: rgba(0, 0, 0, 0.15);
+    gap: 10px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.whatsapp-chat-back-btn {
+    display: none;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 5px 8px;
+    margin-right: 5px;
+    border-radius: 8px;
+    transition: background 0.3s;
+}
+.whatsapp-chat-back-btn:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+/* Mobil Uyumlu DM Penceresi */
+@media (max-width: 600px) {
+    .whatsapp-layout.chat-active .whatsapp-sidebar {
+        display: none !important;
+    }
+    
+    .whatsapp-layout.chat-active .whatsapp-chat-pane {
+        display: flex !important;
+    }
+    
+    .whatsapp-layout:not(.chat-active) .whatsapp-sidebar {
+        width: 100% !important;
+        display: flex !important;
+        border-right: none !important;
+    }
+    
+    .whatsapp-layout:not(.chat-active) .whatsapp-chat-pane {
+        display: none !important;
+    }
+    
+    .whatsapp-chat-back-btn {
+        display: inline-flex !important;
+    }
+}

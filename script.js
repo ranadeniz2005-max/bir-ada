@@ -105,6 +105,7 @@ const gameState = {
     },
     
     // Finans & Adliye & Harcama İadesi
+    creditScore: 1100,
     activeLoans: [],
     activeDeposits: [],
     checkupMonths: 0,
@@ -167,6 +168,12 @@ function openModal(id) {
         // Arkadaşlar sekmesi açılınca gelen istek bildirimini sıfırla
         window.unreadFriendRequestsCount = 0;
         if (typeof updateSocialNotificationBadge === 'function') updateSocialNotificationBadge();
+        
+        // Reset mobile layout if no active chat
+        if (!window.activeChatUsername) {
+            const layout = document.querySelector('.whatsapp-layout');
+            if (layout) layout.classList.remove('chat-active');
+        }
     }
     if(id === 'modal-city' && typeof renderCityVenues === 'function') renderCityVenues();
     
@@ -223,8 +230,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (Array.isArray(gameState.transactions)) {
                         gameState.transactions.forEach(t => { t.dateStr = normalizeDateStr(t.dateStr); });
                     }
-                    if (Array.isArray(gameState.careerHistory)) {
-                        gameState.careerHistory = gameState.careerHistory.map(normalizeDateStr);
+                    if (!gameState.careerHistory || !Array.isArray(gameState.careerHistory)) {
+                        gameState.careerHistory = [];
+                    } else {
+                        gameState.careerHistory = gameState.careerHistory.filter(item => typeof item === 'string').map(normalizeDateStr);
                     }
                     if (gameState.financeHistory && Array.isArray(gameState.financeHistory.labels)) {
                         gameState.financeHistory.labels = gameState.financeHistory.labels.map(normalizeDateStr);
@@ -235,6 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     if(gameState.monthlyCompletedAcademicTasks === undefined) gameState.monthlyCompletedAcademicTasks = 0;
                     if(!gameState.activeAcademicTasks) gameState.activeAcademicTasks = [];
+                    if(gameState.creditScore === undefined) gameState.creditScore = 1100;
                     
                     if (Array.isArray(gameState.friendRequests)) {
                         window.unreadFriendRequestsCount = gameState.friendRequests.length;
@@ -626,22 +636,31 @@ document.addEventListener('DOMContentLoaded', () => {
             if(!tbody) return;
 
             if(playerList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:10px; color:var(--clr-text-muted);">Sunucuda kayıtlı başka oyuncu bulunmuyor.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:10px; color:var(--clr-text-muted);">Sunucuda kayıtlı başka oyuncu bulunmuyor.</td></tr>`;
                 return;
             }
 
             let html = '';
             playerList.forEach(p => {
+                let fScore = p.creditScore || 1100;
+                let fColor = "#10b981";
+                if (fScore < 700) fColor = "#ef4444";
+                else if (fScore < 1100) fColor = "#f59e0b";
+                else if (fScore < 1500) fColor = "#3b82f6";
+
                 html += `
                     <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
                         <td style="padding:10px;">${p.name}</td>
                         <td style="padding:10px;">${p.age}</td>
                         <td style="padding:10px;">${Math.floor(p.balance).toLocaleString("tr-TR")} 🪙</td>
+                        <td style="padding:10px; color:#ef4444; font-weight:500;">${(p.loanDebt || 0).toLocaleString("tr-TR")} 🪙</td>
+                        <td style="padding:10px; color:#10b981; font-weight:500;">${(p.depositBalance || 0).toLocaleString("tr-TR")} 🪙</td>
                         <td style="padding:10px;">${p.job}</td>
                         <td style="padding:10px;">${p.housing}</td>
                         <td style="padding:10px;">${p.edu}</td>
                         <td style="padding:10px;">${p.jobSkill}</td>
                         <td style="padding:10px;">${p.socialScore} Arkadaş</td>
+                        <td style="padding:10px; color:${fColor}; font-weight:bold;">${fScore}</td>
                         <td style="padding:10px; color:${p.isOnline ? 'var(--clr-success)' : 'var(--clr-danger)'};">${p.isOnline ? '🟢 Online' : '🔴 Offline'}</td>
                         <td style="padding:10px;">
                             <button class="btn-primary" style="padding:3px 8px; font-size:0.75rem; border-radius:5px; background:var(--clr-success); margin-right:5px;" onclick="adminSendMoney('${p.name}')">💸 Para Gönder</button>
@@ -904,6 +923,11 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (term === 6) interestRate = 0.075;
         else if (term === 12) interestRate = 0.09;
         
+        const score = gameState.creditScore || 1100;
+        if (score >= 1700) interestRate *= 0.8;
+        else if (score >= 1500) interestRate *= 0.9;
+        else if (score < 1100) interestRate *= 1.3;
+        
         const totalRepayment = val + (val * interestRate);
         const monthlyPayment = Math.floor(totalRepayment / term);
         
@@ -923,18 +947,39 @@ document.addEventListener('DOMContentLoaded', () => {
         if(gameState.isStudent) return notify("Öğrenciler kredi çekemez!", "error");
         if(!gameState.jobType && !gameState.businessOwned) return notify("Kredi çekebilmek için en az asgari ücretli bir işiniz veya işletmeniz olmalı.", "error");
         
+        const score = gameState.creditScore || 1100;
+        if(score < 700) return notify("Findex Kredi Notunuz Çok Riskli (<700) olduğu için bankamız kredi başvurunuzu reddetti!", "error");
+        
         const val = parseInt(document.getElementById('loan-amount').value);
         const term = parseInt(document.getElementById('loan-term').value);
-        if(val > 0) { 
-            updateBalance(val, 'Kredi Çekimi (Gelir)', true);
+        if(val > 0) {
+            const monthlyIncome = getMonthlyIncome();
+            const maxLimit = Math.floor(monthlyIncome * (score / 350) * 1.5);
+            const currentDebt = (gameState.activeLoans || []).reduce((sum, loan) => sum + (loan.monthlyPayment * loan.remainingMonths), 0);
+            const availLimit = Math.max(0, maxLimit - currentDebt);
+            
+            if (val > availLimit) {
+                return notify(`Maksimum kredi çekme limitinizi (${availLimit.toLocaleString('tr-TR')} 🪙) aşıyorsunuz!`, "error");
+            }
             
             let interestRate = 0.04;
             if (term === 3) interestRate = 0.055;
             else if (term === 6) interestRate = 0.075;
             else if (term === 12) interestRate = 0.09;
             
-            const totalRepayment = val + (val * interestRate); // Vadeye göre faiz
+            if (score >= 1700) interestRate *= 0.8;
+            else if (score >= 1500) interestRate *= 0.9;
+            else if (score < 1100) interestRate *= 1.3;
+            
+            const totalRepayment = val + (val * interestRate);
             const monthlyPayment = Math.floor(totalRepayment / term);
+            
+            const currentMonthlyPayment = (gameState.activeLoans || []).reduce((sum, loan) => sum + loan.monthlyPayment, 0);
+            if (currentMonthlyPayment + monthlyPayment > monthlyIncome * 0.70) {
+                return notify(`Aylık toplam taksit ödemeleriniz aylık gelirinizin %70'ini (${Math.floor(monthlyIncome * 0.70).toLocaleString('tr-TR')} 🪙) aşamaz!`, "error");
+            }
+            
+            updateBalance(val, 'Kredi Çekimi (Gelir)', true);
             
             gameState.activeLoans.push({
                 principal: val,
@@ -948,6 +993,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const previewEl = document.getElementById('loan-preview');
             if (previewEl) previewEl.style.display = 'none';
             updateUI(); 
+            saveGame(true);
         }
     };
     document.getElementById('btn-put-deposit').onclick = () => {
@@ -983,6 +1029,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if(gameState.universityDropoutCooldown > 0) {
             return notify(`Üniversiteden yeni ayrıldınız. Tekrar kaydolmak için ${gameState.universityDropoutCooldown} ay beklemelisiniz!`, "error");
         }
+        if(gameState.jobType !== null) {
+            return notify("Üniversiteye kaydolabilmek için önce mevcut işinizden istifa etmelisiniz!", "error");
+        }
         if(!gameState.isStudent && !gameState.universityFrozen) { 
             gameState.isStudent = true; 
             gameState.universityMonths = 0;
@@ -992,6 +1041,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gameState.universityFrozenMonths = 0;
             gameState.universityFreezeCount = 0;
             generateDailyAcademicTasks();
+            addCareerLog("Üniversite eğitimine başladı (Kayıt olundu).");
             notify("Okula kaydoldunuz! Temsili 2 yıl sürecek. Öğrenciyken sadece Part-Time çalışabilirsiniz.", "success"); 
             updateUI(); 
             saveGame(true);
@@ -1001,10 +1051,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-freeze-uni').onclick = () => {
         if (gameState.universityFrozen) {
             // Dondurmayı Çöz (Geri Dön)
+            if (gameState.jobType !== null) {
+                return notify("Okula geri dönebilmek için önce mevcut işinizden istifa etmelisiniz!", "error");
+            }
             gameState.universityFrozen = false;
             gameState.isStudent = true;
             gameState.universityFrozenMonths = 0;
             generateDailyAcademicTasks();
+            addCareerLog("Üniversite dondurması iptal edildi, eğitime geri döndü.");
             notify("Okul dondurması iptal edildi! Eğitime kaldığınız yerden devam ediyorsunuz.", "success");
             updateUI();
             saveGame(true);
@@ -1019,6 +1073,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameState.universityFreezeCount = (gameState.universityFreezeCount || 0) + 1;
                 gameState.universityFrozenMonths = 0;
                 gameState.activeAcademicTasks = [];
+                
+                addCareerLog(`Üniversite eğitimini dondurdu (Hak: ${gameState.universityFreezeCount}/2).`);
                 
                 if (gameState.jobType === 'part-time') {
                     gameState.jobType = null;
@@ -1044,6 +1100,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameState.monthlyCompletedAcademicTasks = 0;
                 gameState.activeAcademicTasks = [];
                 gameState.universityDropoutCooldown = 12;
+                
+                addCareerLog("Üniversiteden ayrıldı (Okul terk).");
 
                 if (gameState.jobType === 'part-time') {
                     gameState.jobType = null;
@@ -1065,6 +1123,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameState.isStudent = false; 
                 gameState.activeAcademicTasks = [];
                 gameState.monthlyCompletedAcademicTasks = 0;
+                addCareerLog("Üniversite eğitimini başarıyla tamamladı ve mezun oldu (Diploma alındı).");
                 notify("Tebrikler 2 Yılı Tamamladın ve 50.000🪙 ödeyip Diplomanı Aldın!"); 
                 updateUI(); 
             }
@@ -1340,7 +1399,13 @@ function onNewMonth() {
             gameState.universityFrozenMonths = 0;
             gameState.isStudent = true;
             generateDailyAcademicTasks();
-            notify("Üniversite dondurma süreniz (6 ay) doldu. Okula zorunlu geri dönüş yaptınız!", "success");
+            if (gameState.jobType !== null) {
+                gameState.jobType = null;
+                addCareerLog("Okula zorunlu geri dönüş yapıldığı için işinden istifa etti/ettirildi.");
+                notify("Üniversite dondurma süreniz doldu ve okula zorunlu geri dönüş yaptınız! Mevcut işinizden otomatik olarak istifa ettirildiniz.", "info");
+            } else {
+                notify("Üniversite dondurma süreniz (6 ay) doldu. Okula zorunlu geri dönüş yaptınız!", "success");
+            }
             saveGame(true);
         }
     }
@@ -1653,9 +1718,9 @@ function processSalariesAndTaxes() {
         }
     } else {
         gameState.joblessMonths = 0; // Reset unemployment counter while employed
-        if(gameState.jobType && gameState.jobType.startsWith('asgari')) { income = 28000; taxRate = 0.10; desc = "Memur Maaşı"; }
+        if(gameState.jobType && gameState.jobType.startsWith('asgari')) { income = 28000; taxRate = 0.10; desc = "Ada Maaşı"; }
         if(gameState.jobType === 'part-time') { income = 14000; taxRate = 0.10; desc = "Öğrenci Part-Time"; }
-        if(gameState.jobType === 'high-level') { income = 60000; taxRate = 0.25; desc = "Üst Düzey Yönetici"; }
+        if(gameState.jobType === 'high-level') { income = 60000; taxRate = 0.25; desc = "Memur Maaşı"; }
 
         if(gameState.isStudent) {
             if (!gameState.monthlyCompletedAcademicTasks) gameState.monthlyCompletedAcademicTasks = 0;
@@ -1790,8 +1855,17 @@ function processBankAccounts() {
             let loan = gameState.activeLoans[i];
             updateBalance(-loan.monthlyPayment, "Banka Kredi Taksiti", false);
             loan.remainingMonths--;
+            
+            // Findex Skoru Güncellemesi (Taksit ödeme)
+            if (gameState.balance < 0) {
+                gameState.creditScore = Math.max(300, (gameState.creditScore || 1100) - 25);
+            } else {
+                gameState.creditScore = Math.min(1900, (gameState.creditScore || 1100) + 15);
+            }
+            
             if (loan.remainingMonths <= 0) {
                 gameState.activeLoans.splice(i, 1);
+                gameState.creditScore = Math.min(1900, (gameState.creditScore || 1100) + 50); // Ekstra kapatma bonusu
                 notify("Bir banka kredinizin taksitleri bitti ve borcunuz kapandı!", "success");
             }
         }
@@ -1808,6 +1882,11 @@ function processBankAccounts() {
                 notify(`Vadeli mevduat süreniz doldu! ${dep.expectedReturn.toLocaleString('tr-TR')} 🪙 hesabınıza aktarıldı.`, "success");
             }
         }
+    }
+    
+    // 3. Genel Borç Durumu Cezası
+    if (gameState.balance < 0) {
+        gameState.creditScore = Math.max(300, (gameState.creditScore || 1100) - 15);
     }
 }
 
@@ -2163,9 +2242,11 @@ function executeBankruptcy(type) {
         gameState.universityFreezeCount = 0;
         gameState.universityDropoutCooldown = 0;
         gameState.balance = 0;
+        gameState.creditScore = 300; // Findex reset
         notify("Tüm haklarınız elinizden alındı. Sıfırdan bir hayata başlıyorsunuz...", "error");
     } 
     else if(type === 'haciz') {
+        gameState.creditScore = 400; // Findex drop
         let satisGeliri = 0;
         if(gameState.businesses.length > 0) {
             satisGeliri += gameState.businesses.length * 300000;
@@ -2184,6 +2265,12 @@ function executeBankruptcy(type) {
         if(gameState.balance < 0) {
             gameState.jobType = 'asgari';
             notify("Borcunuz devam ediyor. Zorunlu kamu hizmetine atandınız.", "error");
+            if (gameState.isStudent) {
+                gameState.isStudent = false;
+                gameState.activeAcademicTasks = [];
+                gameState.monthlyCompletedAcademicTasks = 0;
+                notify("Zorunlu kamu hizmetine atandığınız için üniversite kaydınız silindi.", "info");
+            }
         }
     }
     else if(type === 'maas') {
@@ -2251,6 +2338,60 @@ function updateSurvivalUI() {
     }
 }
 
+function getMonthlyIncome() {
+    let income = 0;
+    if (gameState.jobType) {
+        if (gameState.jobType.startsWith('asgari')) income += 28000;
+        else if (gameState.jobType === 'part-time') income += 14000;
+        else if (gameState.jobType === 'high-level') income += 60000;
+    }
+    if (gameState.businesses && gameState.businesses.length > 0) {
+        gameState.businesses.forEach(b => {
+            if (b === 'cafe') income += 35000;
+            else if (b === 'butik') income += 45000;
+            else if (b === 'firin') income += 80000;
+            else if (b === 'restoran') income += 100000;
+        });
+    }
+    return Math.max(13000, income);
+}
+
+function getFindexRating(score) {
+    if (score < 700) return { label: "Çok Riskli", color: "#ef4444", pct: 15 };
+    if (score < 1100) return { label: "Orta Riskli", color: "#f59e0b", pct: 45 };
+    if (score < 1500) return { label: "Az Riskli", color: "#3b82f6", pct: 70 };
+    if (score < 1700) return { label: "İyi", color: "#10b981", pct: 85 };
+    return { label: "Çok İyi", color: "#059669", pct: 100 };
+}
+
+function updateFindexUI() {
+    const score = gameState.creditScore || 1100;
+    const rating = getFindexRating(score);
+    
+    const textEl = document.getElementById('findex-rating-text');
+    const barEl = document.getElementById('findex-bar');
+    const maxLimitEl = document.getElementById('findex-max-limit');
+    const availLimitEl = document.getElementById('findex-avail-limit');
+    
+    if (textEl) {
+        textEl.textContent = `${rating.label} (${score})`;
+        textEl.style.color = rating.color;
+        textEl.style.backgroundColor = `${rating.color}25`;
+    }
+    if (barEl) {
+        barEl.style.width = `${rating.pct}%`;
+        barEl.style.background = rating.color;
+    }
+    
+    const monthlyIncome = getMonthlyIncome();
+    const maxLimit = Math.floor(monthlyIncome * (score / 350) * 1.5);
+    const currentDebt = (gameState.activeLoans || []).reduce((sum, loan) => sum + (loan.monthlyPayment * loan.remainingMonths), 0);
+    const availLimit = Math.max(0, maxLimit - currentDebt);
+    
+    if (maxLimitEl) maxLimitEl.textContent = `${maxLimit.toLocaleString('tr-TR')} 🪙`;
+    if (availLimitEl) availLimitEl.textContent = `${availLimit.toLocaleString('tr-TR')} 🪙`;
+}
+
 function updateUI() {
     if(elm.ageDisplay) elm.ageDisplay.textContent = gameState.age;
     if(elm.balanceAmount) elm.balanceAmount.textContent = Math.floor(gameState.balance).toLocaleString('tr-TR');
@@ -2270,6 +2411,17 @@ function updateUI() {
 
     elm.jobStatus.textContent = gameState.businesses.length > 0 ? "İş İnsanı" : (gameState.jobType || "İşsiz");
     elm.housingStatus.textContent = gameState.housing === 'hotel' ? `Otel (${gameState.hotelPrice})` : (gameState.housing === 'rented' ? 'Kiralık Ev' : 'Kendi Evi');
+    
+    // Konut durumuna göre otele dönüş butonlarını göster/gizle
+    const btnReturnEmlak = document.getElementById('btn-return-hotel');
+    const btnReturnHotel = document.getElementById('btn-hotel-return');
+    if (gameState.housing !== 'hotel') {
+        if (btnReturnEmlak) btnReturnEmlak.style.display = 'block';
+        if (btnReturnHotel) btnReturnHotel.style.display = 'block';
+    } else {
+        if (btnReturnEmlak) btnReturnEmlak.style.display = 'none';
+        if (btnReturnHotel) btnReturnHotel.style.display = 'none';
+    }
     
     // Üniversite UI Güncellemesi
     const btnFreeze = document.getElementById('btn-freeze-uni');
@@ -2394,6 +2546,7 @@ function updateUI() {
     document.getElementById('checkup-counter').textContent = remainingCheckup;
     
     // Banka Güncellemeleri
+    updateFindexUI();
     let totalDebt = gameState.activeLoans.reduce((sum, loan) => sum + (loan.monthlyPayment * loan.remainingMonths), 0);
     document.getElementById('current-debt').textContent = totalDebt.toLocaleString('tr-TR');
     
@@ -4492,6 +4645,12 @@ window.renderFriends = function() {
 window.selectWhatsappChat = function(username) {
     window.activeChatUsername = username;
     
+    // Toggle mobile chat view class
+    const layout = document.querySelector('.whatsapp-layout');
+    if (layout) {
+        layout.classList.add('chat-active');
+    }
+    
     // Clear unread count for this user
     if (window.unreadDMs && window.unreadDMs[username]) {
         window.unreadDMs[username] = 0;
@@ -4501,6 +4660,16 @@ window.selectWhatsappChat = function(username) {
     // Re-render friends list to update selected background and unread badges
     renderFriends();
     // Render the chat history
+    renderDMHistory();
+};
+
+window.closeWhatsappChat = function() {
+    window.activeChatUsername = null;
+    const layout = document.querySelector('.whatsapp-layout');
+    if (layout) {
+        layout.classList.remove('chat-active');
+    }
+    renderFriends();
     renderDMHistory();
 };
 
@@ -4551,6 +4720,9 @@ window.renderDMHistory = function() {
     if (headerEl) {
         let isOnline = (window.onlinePlayersList || []).includes(target);
         headerEl.innerHTML = `
+            <button class="whatsapp-chat-back-btn" onclick="closeWhatsappChat()">
+                ⬅️
+            </button>
             <div style="width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg, #a78bfa, #f472b6); display:flex; align-items:center; justify-content:center; font-weight:bold; color:white; font-size:0.85rem; flex-shrink:0;">
                 ${target[0].toUpperCase()}
             </div>

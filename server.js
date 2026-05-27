@@ -295,6 +295,16 @@ function broadcastAdminPlayerData() {
                         
         let eduStr = pData.isStudent ? "Okuyor" : (pData.hasDiploma ? "Mezun" : "Yok");
 
+        let totalDebt = 0;
+        if (pData.activeLoans && Array.isArray(pData.activeLoans)) {
+            totalDebt = pData.activeLoans.reduce((sum, loan) => sum + (loan.monthlyPayment * loan.remainingMonths), 0);
+        }
+        
+        let totalDeposit = 0;
+        if (pData.activeDeposits && Array.isArray(pData.activeDeposits)) {
+            totalDeposit = pData.activeDeposits.reduce((sum, dep) => sum + dep.amount, 0);
+        }
+
         playerList.push({
             name: username,
             age: pData.age || 18,
@@ -304,7 +314,10 @@ function broadcastAdminPlayerData() {
             edu: eduStr,
             jobSkill: pData.jobSkill || 0,
             socialScore: pData.friends ? pData.friends.length : 0,
-            isOnline: Object.values(players).some(pl => pl.username === username)
+            isOnline: Object.values(players).some(pl => pl.username === username),
+            creditScore: pData.creditScore || 1100,
+            loanDebt: totalDebt,
+            depositBalance: totalDeposit
         });
     }
     
