@@ -589,13 +589,15 @@ io.on('connection', (socket) => {
             ofis: { patrons: [], workers: [] },
             gym: { patrons: [], workers: [] },
             spa: { patrons: [], workers: [] },
-            kuafor: { patrons: [], workers: [] }
+            kuafor: { patrons: [], workers: [] },
+            eczane: { patrons: [], workers: [] },
+            kasap: { patrons: [], workers: [] }
         };
         let students = [];
         for (let username in db) {
             if (username === 'ADMIN_SYSTEM' || username === 'SERVER_TIME') continue;
             let pData = db[username];
-            ['cafe', 'firin', 'butik', 'restoran'].forEach(v => {
+            ['cafe', 'firin', 'butik', 'restoran', 'gym', 'spa', 'kuafor', 'eczane', 'kasap'].forEach(v => {
                 if (pData.businesses && pData.businesses.includes(v)) venueData[v].patrons.push(username);
                 if (pData.jobType === ('asgari-' + v)) venueData[v].workers.push(username);
             });

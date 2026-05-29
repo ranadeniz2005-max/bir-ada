@@ -592,6 +592,11 @@
                     <button class="btn-primary" id="job-asgari-restoran" style="font-size:0.85rem;">Ada Restoran Lokantası</button>
                     <button class="btn-primary" id="job-asgari-firin" style="font-size:0.85rem;">Ada Fırın İşletmesi</button>
                     <button class="btn-primary" id="job-asgari-butik" style="font-size:0.85rem;">Ada Butik Mağazası</button>
+                    <button class="btn-primary" id="job-asgari-gym" style="font-size:0.85rem;">Ada Spor & Fitness</button>
+                    <button class="btn-primary" id="job-asgari-spa" style="font-size:0.85rem;">Ada SPA & Masaj</button>
+                    <button class="btn-primary" id="job-asgari-kuafor" style="font-size:0.85rem;">Ada Kuaför/Berber</button>
+                    <button class="btn-primary" id="job-asgari-eczane" style="font-size:0.85rem;">Ada Eczane</button>
+                    <button class="btn-primary" id="job-asgari-kasap" style="font-size:0.85rem;">Ada Kasap</button>
                 </div>
                 <hr style="opacity:0.2; margin:10px 0;">
                 <button class="btn-secondary" id="job-part">Part-Time Öğrenci (14.000 🪙 + 4.000 Burs)</button>
@@ -599,14 +604,26 @@
                 <hr style="opacity:0.2;">
                 <button class="btn-danger" id="job-resign" style="display:none;">İşten Ayrıl</button>
             </div>
-        </div>
-        <div class="tab-content" id="jobs-history">
-            <p style="font-size:0.8rem; color:var(--clr-text-muted);">Oyundaki işe girişleriniz, ayrılıklarınız ve aldığınız unvanlar loglanır.</p>
-            <div id="career-history-list" style="margin-top:15px; font-size:0.9rem; background:rgba(0,0,0,0.3); padding:10px; border-radius:10px; max-height:200px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;">
-                <i style="color:var(--clr-text-muted);">Henüz bir özgeçmiş kaydı bulunmuyor.</i>
+            
+            <div class="tab-content" id="jobs-history">
+                <!-- Üniversite Bilgileri Panel Gösterimi -->
+                <div style="margin-bottom: 12px; padding: 12px; background: rgba(255, 255, 255, 0.04); border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.08); display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="color:var(--clr-text-muted);">🎓 Üniversite Giriş Tarihi:</span>
+                        <strong id="career-uni-start" style="color:#60a5fa;">-</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="color:var(--clr-text-muted);">🎓 Üniversite Mezuniyet Tarihi:</span>
+                        <strong id="career-uni-end" style="color:#10b981;">-</strong>
+                    </div>
+                </div>
+                <p style="font-size:0.8rem; color:var(--clr-text-muted);">Oyundaki işe girişleriniz, ayrılıklarınız ve aldığınız unvanlar loglanır.</p>
+                <div id="career-history-list" style="margin-top:10px; font-size:0.9rem; background:rgba(0,0,0,0.3); padding:10px; border-radius:10px; max-height:180px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;">
+                    <i style="color:var(--clr-text-muted);">Henüz bir özgeçmiş kaydı bulunmuyor.</i>
+                </div>
             </div>
         </div>
-    </div></div>
+    </div>
 
     <!-- YÖNETİM (ADMIN) PANELİ -->
     <div id="modal-admin" class="modal"><div class="modal-content glass-card wide"><span class="close-btn" onclick="closeModal('modal-admin')">&times;</span>

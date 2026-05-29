@@ -79,6 +79,8 @@ const gameState = {
     monthlyCompletedAcademicTasks: 0, // Aylık tamamlanan akademik görev sayısı
     activeAcademicTasks: [],         // Günlük üniversite ödev/proje/sınav görevleri dizisi
     careerHistory: [],   // İş Geçmişi / Özgeçmiş Listesi
+    uniStartDate: null,
+    uniEndDate: null,
     jobApplications: [], // Admin paneline düşen CV başvuruları
     jobApplicationCooldown: 0, // Reddedilirse 2 ay bekleme süresi
     universityFrozen: false,
@@ -241,6 +243,38 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (Array.isArray(gameState.lawsuits)) {
                         gameState.lawsuits.forEach(law => { law.dateStr = normalizeDateStr(law.dateStr); });
                     }
+                    
+                    if (gameState.uniStartDate === undefined) gameState.uniStartDate = null;
+                    if (gameState.uniEndDate === undefined) gameState.uniEndDate = null;
+                    
+                    function extractUniDatesFromHistory() {
+                        if (!gameState.careerHistory) return;
+                        if (!gameState.uniStartDate) {
+                            for (let i = gameState.careerHistory.length - 1; i >= 0; i--) {
+                                let log = gameState.careerHistory[i];
+                                if (log.includes("Üniversite eğitimine başladı")) {
+                                    let match = log.match(/^\[(\d+\.\d+)\]/);
+                                    if (match) {
+                                        gameState.uniStartDate = match[1];
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (!gameState.uniEndDate) {
+                            for (let log of gameState.careerHistory) {
+                                if (log.includes("Üniversite eğitimini başarıyla tamamladı")) {
+                                    let match = log.match(/^\[(\d+\.\d+)\]/);
+                                    if (match) {
+                                        gameState.uniEndDate = match[1];
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    extractUniDatesFromHistory();
                     
                     if(gameState.monthlyCompletedAcademicTasks === undefined) gameState.monthlyCompletedAcademicTasks = 0;
                     if(!gameState.activeAcademicTasks) gameState.activeAcademicTasks = [];
@@ -1041,6 +1075,12 @@ document.addEventListener('DOMContentLoaded', () => {
             gameState.universityFrozenMonths = 0;
             gameState.universityFreezeCount = 0;
             generateDailyAcademicTasks();
+            
+            let mStr = String(gameState.time.month).padStart(2, '0');
+            let yStr = String(gameState.time.year).padStart(4, '0');
+            gameState.uniStartDate = `${mStr}.${yStr}`;
+            gameState.uniEndDate = null;
+            
             addCareerLog("Üniversite eğitimine başladı (Kayıt olundu).");
             notify("Okula kaydoldunuz! Temsili 2 yıl sürecek. Öğrenciyken sadece Part-Time çalışabilirsiniz.", "success"); 
             updateUI(); 
@@ -1101,6 +1141,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameState.activeAcademicTasks = [];
                 gameState.universityDropoutCooldown = 12;
                 
+                gameState.uniStartDate = null;
+                gameState.uniEndDate = null;
+                
                 addCareerLog("Üniversiteden ayrıldı (Okul terk).");
 
                 if (gameState.jobType === 'part-time') {
@@ -1123,6 +1166,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameState.isStudent = false; 
                 gameState.activeAcademicTasks = [];
                 gameState.monthlyCompletedAcademicTasks = 0;
+                
+                let mStr = String(gameState.time.month).padStart(2, '0');
+                let yStr = String(gameState.time.year).padStart(4, '0');
+                gameState.uniEndDate = `${mStr}.${yStr}`;
+                
                 addCareerLog("Üniversite eğitimini başarıyla tamamladı ve mezun oldu (Diploma alındı).");
                 notify("Tebrikler 2 Yılı Tamamladın ve 50.000🪙 ödeyip Diplomanı Aldın!"); 
                 updateUI(); 
@@ -1141,13 +1189,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     // Kariyer Spesifikasyonları
-    document.getElementById('job-asgari-cafe').onclick = () => { takeJob('asgari-cafe'); addCareerLog("Ada Kafe İşletmesi'nde Asgari İşçi olarak işe girdi."); };
-    document.getElementById('job-asgari-restoran').onclick = () => { takeJob('asgari-restoran'); addCareerLog("Ada Restoran Lokantası'nda Asgari İşçi olarak işe girdi."); };
-    document.getElementById('job-asgari-firin').onclick = () => { takeJob('asgari-firin'); addCareerLog("Ada Fırın İşletmesi'nde Asgari İşçi olarak işe girdi."); };
     document.getElementById('job-asgari-cafe').onclick = () => { takeJob('asgari-cafe'); addCareerLog("Ada Kafe İşletmesi'nde Asgari İşçi olarak işe girdi."); saveGame(true); };
     document.getElementById('job-asgari-restoran').onclick = () => { takeJob('asgari-restoran'); addCareerLog("Ada Restoran Lokantası'nda Asgari İşçi olarak işe girdi."); saveGame(true); };
     document.getElementById('job-asgari-firin').onclick = () => { takeJob('asgari-firin'); addCareerLog("Ada Fırın İşletmesi'nde Asgari İşçi olarak işe girdi."); saveGame(true); };
     document.getElementById('job-asgari-butik').onclick = () => { takeJob('asgari-butik'); addCareerLog("Ada Butik Mağazası'nde Asgari İşçi olarak işe girdi."); saveGame(true); };
+    document.getElementById('job-asgari-gym').onclick = () => { takeJob('asgari-gym'); addCareerLog("Ada Spor & Fitness İşletmesi'nde Asgari İşçi olarak işe girdi."); saveGame(true); };
+    document.getElementById('job-asgari-spa').onclick = () => { takeJob('asgari-spa'); addCareerLog("Ada SPA & Masaj İşletmesi'nde Asgari İşçi olarak işe girdi."); saveGame(true); };
+    document.getElementById('job-asgari-kuafor').onclick = () => { takeJob('asgari-kuafor'); addCareerLog("Ada Kuaför/Berber İşletmesi'nde Asgari İşçi olarak işe girdi."); saveGame(true); };
+    document.getElementById('job-asgari-eczane').onclick = () => { takeJob('asgari-eczane'); addCareerLog("Ada Eczane İşletmesi'nde Asgari İşçi olarak işe girdi."); saveGame(true); };
+    document.getElementById('job-asgari-kasap').onclick = () => { takeJob('asgari-kasap'); addCareerLog("Ada Kasap İşletmesi'nde Asgari İşçi olarak işe girdi."); saveGame(true); };
     
     document.getElementById('job-part').onclick = () => { 
         if(!gameState.isStudent) return notify("Üniversiteye kayıtlı bir öğrenci olmadan Part-Time çalışamazsınız!", "error");
@@ -1667,6 +1717,21 @@ function generateDailyOrders() {
             } else if(jt === 'asgari-butik') {
                 namesRoutine = ["Müşteri - Manken Giydir", "Kıyafet Katla", "Askıları Düzenle", "Kasa Girişi", "Depodan Beden Çıkar"];
                 namesCrisis = ["Kasiyer Cihazı Dondu!", "Alarm Sistemi Çaldı!", "Raflar Devrildi!"];
+            } else if(jt === 'asgari-gym') {
+                namesRoutine = ["Müşteri - Protein Bar", "Ağırlıkları Topla", "Koşu Bandını Temizle", "Pilates Topu Şişir", "Yeni Üye Kaydı Yap"];
+                namesCrisis = ["Halter Barı Eğildi!", "Müşteri Sakatlandı (Buz Getir!)", "Soyunma Odası Kilidi Bozuldu!"];
+            } else if(jt === 'asgari-spa') {
+                namesRoutine = ["Müşteri - Detoks Çayı", "Saunayı Isıt", "Havluları Katla", "Masaj Yağı Doldur", "VIP Jakuziyi Temizle"];
+                namesCrisis = ["Sauna Rezistansı Yandı!", "Masaj Yağı Devrildi!", "VIP Jakuzi Su Taşırdı!"];
+            } else if(jt === 'asgari-kuafor') {
+                namesRoutine = ["Müşteri - Saç & Sakal Tıraşı", "Yerleri Süpür", "Makasları Dezenfekte Et", "Fön Makinesini Hazırla", "Maske Karışımı Yap"];
+                namesCrisis = ["Fön Makinesi Patladı!", "Saç Boyası Halıya Damladı!", "Sıcak Su Kombisi Bozuldu!"];
+            } else if(jt === 'asgari-eczane') {
+                namesRoutine = ["Reçete Kontrolü Yap", "İlaç Kutularını Düzenle", "Müşteriye Vitamin Ver", "Kasa İşlemi Yap", "Sipariş Kolilerini Aç"];
+                namesCrisis = ["Yanlış İlaç Teslimi Engellendi!", "Nöbetçi Eczane Yoğunluğu!", "Soğuk Zincir Dolabı Arızalandı!"];
+            } else if(jt === 'asgari-kasap') {
+                namesRoutine = ["Kıymayı Çek", "Tezgahı Temizle", "Etleri Askıya As", "Müşteriye Paket Yap", "Bıçakları Bileyle"];
+                namesCrisis = ["Kıyma Makinesi Sıkıştı!", "Elektrik Kesildi (Buzluk Tehlikede!)", "Bıçak Kayan Müşteri Sakatlığı!"];
             } else { // Part-time veya High-level
                 namesRoutine = ["Dosyalama Yap", "Rapor Hazırla", "Toplantı Odasını Düzenle", "Mail Yanıtla", "Eksik Hesapları Kapat"];
                 namesCrisis = ["Patron Acil İhtiyaç İstiyor!", "Bilgisayar Çöktü!", "Sunucu Bağlantısı Gitti!"];
@@ -2042,7 +2107,7 @@ function takeJob(type) {
     
     document.getElementById('job-resign').style.display = 'block';
     
-    let jobLabels = {'asgari-cafe':'Ada Kafe İşletmesi', 'asgari-butik':'Ada Butik Mağazası', 'asgari-firin':'Ada Fırın İşletmesi', 'asgari-restoran':'Ada Restoran Lokantası', 'part-time':'Part-Time Öğrenci', 'high-level':'Müdür'};
+    let jobLabels = {'asgari-cafe':'Ada Kafe İşletmesi', 'asgari-butik':'Ada Butik Mağazası', 'asgari-firin':'Ada Fırın İşletmesi', 'asgari-restoran':'Ada Restoran Lokantası', 'asgari-gym':'Ada Spor & Fitness', 'asgari-spa':'Ada SPA & Masaj', 'asgari-kuafor':'Ada Kuaför/Berber', 'asgari-eczane':'Ada Eczane', 'asgari-kasap':'Ada Kasap', 'part-time':'Part-Time Öğrenci', 'high-level':'Müdür'};
     notify(`İş ataması yapıldı: ${jobLabels[type] || type}`, "success");
     updateUI();
     saveGame(true);
@@ -2529,6 +2594,24 @@ function updateUI() {
             chList.innerHTML = gameState.careerHistory.map(log => 
                 `<div style="border-bottom:1px solid rgba(255,255,255,0.1); padding:4px 0;">📜 ${log}</div>`
             ).join('');
+        }
+    }
+
+    // Üniversite Tarih Bilgilerini Güncelle
+    const startEl = document.getElementById('career-uni-start');
+    const endEl = document.getElementById('career-uni-end');
+    if (startEl) {
+        startEl.textContent = gameState.uniStartDate || "-";
+    }
+    if (endEl) {
+        if (gameState.uniEndDate) {
+            endEl.textContent = gameState.uniEndDate;
+        } else if (gameState.isStudent) {
+            endEl.textContent = "Devam Ediyor...";
+        } else if (gameState.universityFrozen) {
+            endEl.textContent = "Donduruldu";
+        } else {
+            endEl.textContent = "-";
         }
     }
     // UI Dinamik Fiyat Güncellemeleri (Öğrenci %30 İndirimi yansıtması)
@@ -4348,6 +4431,34 @@ window.renderCityVenuesReal = function() {
                 { name: 'Cilt Bakımı & Maske', cost: 750, morale: 25, health: 2, icon: '🧖‍♀️' },
                 { name: 'VIP Saç Boyama & Stil Değişimi', cost: 1800, morale: 60, health: 0, icon: '🎨' },
                 { name: 'Komple Bakım & Damat Tıraşı Paketi', cost: 4000, morale: 120, health: 5, icon: '👑' }
+            ]
+        },
+        {
+            id: 'eczane',
+            title: 'Ada Eczane',
+            desc: 'Sağlık & İlaç / Vitamin',
+            icon: '💊',
+            defaultPatron: 'Eczaci_Riza',
+            defaultWorker: 'Kalfa_Gizem',
+            menu: [
+                { name: 'C Vitamini Takviyesi', cost: 300, morale: 2, health: 5, icon: '💊' },
+                { name: 'Ağrı Kesici & Yatıştırıcı', cost: 500, morale: 10, health: 8, icon: '💊' },
+                { name: 'Bitkisel Sakinleştirici Şurup', cost: 1200, morale: 20, health: 12, icon: '🧪' },
+                { name: 'Lüks İthal Multivitamin Paketi', cost: 3000, morale: 30, health: 30, icon: '🧴' }
+            ]
+        },
+        {
+            id: 'kasap',
+            title: 'Ada Kasap',
+            desc: 'Taze Et & Gurme Şarküteri',
+            icon: '🍖',
+            defaultPatron: 'Kasap_Ali',
+            defaultWorker: 'Cirak_Cem',
+            menu: [
+                { name: '1 Kg Taze Tavuk Baget', cost: 600, morale: 5, health: 10, icon: '🍗' },
+                { name: '1 Kg Dana Kıyma', cost: 1500, morale: 10, health: 18, icon: '🥩' },
+                { name: '1 Kg Gurme Kasap Sucuk', cost: 2500, morale: 18, health: 22, icon: '🌭' },
+                { name: '1 Kg Kuzu Pirzola', cost: 4000, morale: 30, health: 35, icon: '🍖' }
             ]
         }
     ];
