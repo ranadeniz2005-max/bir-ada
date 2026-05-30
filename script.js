@@ -3505,7 +3505,7 @@ window.startAcademicMinigame = function(taskId) {
         renderBoard();
     }
     else if(task.gameType === 'word_scramble') {
-        const wordsPool = ["KAMPUS", "DIPLOMA", "AKADEMI", "REKTOR", "PROJE", "KUTUPHANE", "SINAV", "BILIM", "LABORATUVAR", "KARIYER", "DEKAN", "DERSLIK", "BURS"];
+        const wordsPool = ["KAMPÜS", "DİPLOMA", "AKADEMİ", "REKTÖR", "PROJE", "KÜTÜPHANE", "SINAV", "BİLİM", "LABORATUVAR", "KARİYER", "DEKAN", "DERSLİK", "BURS", "ÖĞRENCİ", "FAKÜLTE", "MEZUNİYET", "PROFESÖR", "DERS", "VİZE", "FİNAL"];
         let targetCount = task.isExam ? 2 : 1;
         let solvedCount = 0;
         
@@ -4026,8 +4026,19 @@ function startMinigame(orderId) {
         });
     }
     else if(currentMGOrder.gameType === 'typing') {
-        let tpWords = ["RAPOR", "KAHVE", "HESAP", "SERVIS", "MUSTERI", "GUNLUK", "MESAJ"];
-        if(currentMGOrder.type === 'crisis') tpWords = ["YANGIN", "BOZUK", "SIKAYET", "ACIL", "KRIZ", "MASRAF"];
+        const toTurkishUpperCase = (str) => {
+            return str
+                .replace(/i/g, 'İ')
+                .replace(/ı/g, 'I')
+                .replace(/ğ/g, 'Ğ')
+                .replace(/ü/g, 'Ü')
+                .replace(/ş/g, 'Ş')
+                .replace(/ö/g, 'Ö')
+                .replace(/ç/g, 'Ç')
+                .toUpperCase();
+        };
+        let tpWords = ["RAPOR", "KAHVE", "HESAP", "SERVİS", "MÜŞTERİ", "GÜNLÜK", "MESAJ"];
+        if(currentMGOrder.type === 'crisis') tpWords = ["YANGIN", "BOZUK", "ŞİKAYET", "ACİL", "KRİZ", "MASRAF"];
         let tpTarget = tpWords[Math.floor(Math.random() * tpWords.length)];
         
         container.innerHTML = `
@@ -4039,7 +4050,7 @@ function startMinigame(orderId) {
         let typeInp = document.getElementById('type-hidden');
         typeInp.focus();
         typeInp.addEventListener('input', function() {
-            let val = this.value.toUpperCase();
+            let val = toTurkishUpperCase(this.value);
             this.value = val;
             if(val === tpTarget && !gameWon) {
                 gameWon = true;
